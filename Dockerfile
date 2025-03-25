@@ -15,8 +15,6 @@ COPY . .
 # Build the application
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV OPENAI_API_KEY=${OPENAI_API_KEY}
-ENV OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL}
 RUN npm run build
 
 # Production stage
@@ -26,8 +24,6 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV OPENAI_API_KEY=${OPENAI_API_KEY}
-ENV OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL}
 
 # Copy necessary files from builder
 COPY --from=builder /app/next.config.ts ./
@@ -39,7 +35,7 @@ COPY --from=builder /app/package.json ./package.json
 # Expose the port the app runs on
 EXPOSE 3000
 
-# Start the application using the standalone server
+# Azure OpenAI environment variables will be set during deployment
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 CMD ["node", ".next/standalone/server.js"] 

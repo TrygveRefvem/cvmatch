@@ -197,8 +197,11 @@ export default function MatchPage() {
             <Link href="/" className="hover:text-primary transition-colors">
               Hjem
             </Link>
-            <Link href="/match" className="hover:text-primary transition-colors">
-              Match CV
+            <Link href="/match" className="text-primary font-medium transition-colors">
+              Match
+            </Link>
+            <Link href="/batch" className="hover:text-primary transition-colors">
+              Batch
             </Link>
             <Link href="/about" className="hover:text-primary transition-colors">
               Om oss
@@ -252,45 +255,65 @@ export default function MatchPage() {
               )}
 
               <form onSubmit={handleSubmitCv}>
-                <div className="mb-8">
-                  <label className="block text-sm font-medium mb-2">CV-fil</label>
-                  <div className="border-2 border-dashed border-input rounded-lg p-8 text-center">
-                    {!cvFile ? (
-                      <>
-                        <DocumentArrowUpIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <p className="text-muted-foreground mb-4">
-                          Dra og slipp CV-filen din her, eller klikk for å velge fil
-                        </p>
-                        <input
-                          type="file"
-                          accept=".pdf,.docx,.doc,.txt"
-                          onChange={handleCvUpload}
-                          className="hidden"
-                          id="cv-upload"
-                          required
-                        />
-                        <label
-                          htmlFor="cv-upload"
-                          className="btn btn-secondary cursor-pointer"
-                        >
-                          Velg fil
-                        </label>
-                      </>
-                    ) : (
-                      <div>
-                        <p className="font-medium mb-2">{cvFile.name}</p>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          {(cvFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setCvFile(null)}
-                          className="btn btn-secondary"
-                        >
-                          Velg en annen fil
-                        </button>
-                      </div>
-                    )}
+                <div className="mb-6">
+                  <div className="flex items-start mb-2 p-4 bg-secondary rounded-lg">
+                    <input 
+                      type="checkbox" 
+                      id="gdprConsent"
+                      className="mt-1 mr-3" 
+                      defaultChecked={true}
+                    />
+                    <label htmlFor="gdprConsent" className="text-sm text-muted-foreground">
+                      Ved å fortsette godtar jeg at min CV og stillingsdata behandles i samsvar med 
+                      <Link href="/privacy" className="text-primary hover:underline ml-1">
+                        personvernerklæringen
+                      </Link>. 
+                      Mine data slettes automatisk etter 30 dager.
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="space-y-8">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">CV-fil</label>
+                    <div className="border-2 border-dashed border-input rounded-lg p-8 text-center">
+                      {!cvFile ? (
+                        <>
+                          <DocumentArrowUpIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                          <p className="text-muted-foreground mb-4">
+                            Dra og slipp CV-filen din her, eller klikk for å velge fil
+                          </p>
+                          <input
+                            type="file"
+                            accept=".pdf,.docx,.doc,.txt"
+                            onChange={handleCvUpload}
+                            className="hidden"
+                            id="cv-upload"
+                            required
+                          />
+                          <label
+                            htmlFor="cv-upload"
+                            className="btn btn-secondary cursor-pointer"
+                          >
+                            Velg fil
+                          </label>
+                        </>
+                      ) : (
+                        <div>
+                          <p className="font-medium mb-2">{cvFile.name}</p>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            {(cvFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setCvFile(null)}
+                            className="btn btn-secondary"
+                          >
+                            Velg en annen fil
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 

@@ -166,7 +166,7 @@ export default function BatchClient() {
       
       // Send data til API-en
       console.log('Sender data til API...');
-      const response = await fetch(`${API_URL}/batch`, {
+      const response = await fetch(`${API_URL}/api/batch`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,137 +205,180 @@ export default function BatchClient() {
   };
 
   return (
-    <div className="flex-1 py-12">
-      <div className="container max-w-4xl">
-        <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8">
-          <ArrowLeftIcon className="h-4 w-4 mr-2" />
-          Tilbake til forsiden
-        </Link>
+    <div className="flex flex-col min-h-screen">
+      {/* Header */}
+      <header className="border-b border-border">
+        <div className="container py-4 flex justify-between items-center">
+          <Link href="/" className="text-2xl font-bold text-primary">
+            CV Match & Feedback
+          </Link>
+          <nav className="hidden md:flex space-x-6">
+            <Link href="/" className="hover:text-primary transition-colors">
+              Hjem
+            </Link>
+            <Link href="/match" className="hover:text-primary transition-colors">
+              Match
+            </Link>
+            <Link href="/batch" className="text-primary font-medium transition-colors">
+              Batch
+            </Link>
+            <Link href="/about" className="hover:text-primary transition-colors">
+              Om oss
+            </Link>
+          </nav>
+        </div>
+      </header>
 
-        <div className="card p-8">
-          <h1 className="text-2xl font-bold mb-6">Batch CV-analyse</h1>
-          <p className="text-muted-foreground mb-8">
-            Last opp flere CV-er og en stillingsannonse for å analysere dem samtidig.
-          </p>
+      <div className="flex-1 py-12">
+        <div className="container max-w-4xl">
+          <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8">
+            <ArrowLeftIcon className="h-4 w-4 mr-2" />
+            Tilbake til forsiden
+          </Link>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
-            </div>
-          )}
+          <div className="card p-8">
+            <h1 className="text-2xl font-bold mb-6">Batch CV-analyse</h1>
+            <p className="text-muted-foreground mb-8">
+              Last opp flere CV-er og en stillingsannonse for å analysere dem samtidig.
+            </p>
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-8">
-              <label className="block text-sm font-medium mb-2">Last opp CV-er</label>
-              <div className="border-2 border-dashed border-input rounded-lg p-8">
-                <div className="space-y-4">
-                  {cvFiles.length > 0 && (
-                    <div className="space-y-2">
-                      {cvFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-secondary rounded">
-                          <span className="text-sm">{file.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeCv(index)}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+                {error}
+              </div>
+            )}
 
-                  <div className="text-center">
-                    <label className="cursor-pointer inline-flex items-center">
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.doc,.docx,.txt"
-                        multiple
-                        onChange={handleCvUpload}
-                      />
-                      <div className="btn btn-secondary">
-                        <DocumentArrowUpIcon className="h-5 w-5 mr-2" />
-                        Last opp CV-er
+            <form onSubmit={handleSubmit}>
+              <div className="mb-6">
+                <div className="flex items-start mb-2 p-4 bg-secondary rounded-lg">
+                  <input 
+                    type="checkbox" 
+                    id="gdprConsent"
+                    className="mt-1 mr-3" 
+                    defaultChecked={true}
+                  />
+                  <label htmlFor="gdprConsent" className="text-sm text-muted-foreground">
+                    Ved å fortsette godtar jeg at mine CV-er og stillingsdata behandles i samsvar med 
+                    <Link href="/privacy" className="text-primary hover:underline ml-1">
+                      personvernerklæringen
+                    </Link>. 
+                    Mine data slettes automatisk etter 30 dager.
+                  </label>
+                </div>
+              </div>
+              
+              <div className="mb-8">
+                <label className="block text-sm font-medium mb-2">Last opp CV-er</label>
+                <div className="border-2 border-dashed border-input rounded-lg p-8">
+                  <div className="space-y-4">
+                    {cvFiles.length > 0 && (
+                      <div className="space-y-2">
+                        {cvFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-secondary rounded">
+                            <span className="text-sm">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeCv(index)}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    </label>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Støtter PDF, DOC, DOCX og TXT
-                    </p>
+                    )}
+
+                    <div className="text-center">
+                      <label className="cursor-pointer inline-flex items-center">
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.txt"
+                          multiple
+                          onChange={handleCvUpload}
+                        />
+                        <div className="btn btn-secondary">
+                          <DocumentArrowUpIcon className="h-5 w-5 mr-2" />
+                          Last opp CV-er
+                        </div>
+                      </label>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Støtter PDF, DOC, DOCX og TXT
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mb-8">
-              <label className="block text-sm font-medium mb-2">Stillingsannonse</label>
-              <div className="flex space-x-4 mb-4">
-                <button
-                  type="button"
-                  className={`flex-1 py-2 px-4 rounded-md ${
-                    useUrl
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
-                  }`}
-                  onClick={() => setUseUrl(true)}
-                >
-                  <GlobeAltIcon className="h-5 w-5 inline-block mr-2" />
-                  URL
-                </button>
-                <button
-                  type="button"
-                  className={`flex-1 py-2 px-4 rounded-md ${
-                    !useUrl
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
-                  }`}
-                  onClick={() => setUseUrl(false)}
-                >
-                  <DocumentArrowUpIcon className="h-5 w-5 inline-block mr-2" />
-                  Tekst
-                </button>
+              <div className="mb-8">
+                <label className="block text-sm font-medium mb-2">Stillingsannonse</label>
+                <div className="flex space-x-4 mb-4">
+                  <button
+                    type="button"
+                    className={`flex-1 py-2 px-4 rounded-md ${
+                      useUrl
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground"
+                    }`}
+                    onClick={() => setUseUrl(true)}
+                  >
+                    <GlobeAltIcon className="h-5 w-5 inline-block mr-2" />
+                    URL
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex-1 py-2 px-4 rounded-md ${
+                      !useUrl
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground"
+                    }`}
+                    onClick={() => setUseUrl(false)}
+                  >
+                    <DocumentArrowUpIcon className="h-5 w-5 inline-block mr-2" />
+                    Tekst
+                  </button>
+                </div>
+
+                {useUrl ? (
+                  <input
+                    type="url"
+                    value={jobUrl}
+                    onChange={(e) => setJobUrl(e.target.value)}
+                    placeholder="Lim inn URL til stillingsannonse"
+                    className="input w-full"
+                  />
+                ) : (
+                  <textarea
+                    value={jobText}
+                    onChange={(e) => setJobText(e.target.value)}
+                    placeholder="Lim inn tekst fra stillingsannonse"
+                    className="input min-h-[200px]"
+                  />
+                )}
               </div>
 
-              {useUrl ? (
-                <input
-                  type="url"
-                  value={jobUrl}
-                  onChange={(e) => setJobUrl(e.target.value)}
-                  placeholder="Lim inn URL til stillingsannonse"
-                  className="input w-full"
-                />
-              ) : (
-                <textarea
-                  value={jobText}
-                  onChange={(e) => setJobText(e.target.value)}
-                  placeholder="Lim inn tekst fra stillingsannonse"
-                  className="input min-h-[200px]"
-                />
-              )}
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={
-                  isAnalyzing ||
-                  cvFiles.length === 0 ||
-                  (useUrl ? !jobUrl : !jobText)
-                }
-              >
-                {isAnalyzing ? (
-                  <>
-                    <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
-                    Analyserer...
-                  </>
-                ) : (
-                  'Start analyse'
-                )}
-              </button>
-            </div>
-          </form>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={
+                    isAnalyzing ||
+                    cvFiles.length === 0 ||
+                    (useUrl ? !jobUrl : !jobText)
+                  }
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
+                      Analyserer...
+                    </>
+                  ) : (
+                    'Start analyse'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>

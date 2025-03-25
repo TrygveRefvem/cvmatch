@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import * as cheerio from 'cheerio';
+import getOpenAIClient from '@/lib/openai-client';
 
 // Initialiser OpenAI-klienten med API-nøkkelen fra miljøvariabler
 const openai = new OpenAI({
@@ -167,6 +168,9 @@ async function analyzeCvAndJob(cvText: string, jobText: string) {
     console.log('Jobb lengde:', jobText.length);
     console.log('Bruker modell: o3-mini');
     
+    // Get the OpenAI client from our modular configuration
+    const openai = getOpenAIClient();
+    
     // Bruk OpenAI for analyse
     const response = await openai.chat.completions.create({
       model: "o3-mini",
@@ -178,17 +182,17 @@ VIKTIG: Alle numeriske verdier MÅ være tall, ikke tekst. For eksempel: 75 ikke
 
 Returner JSON med følgende struktur:
 {
-  "overallMatch": number, // 0-100, må være et tall
+  "overallMatch": number, // 0-100, må være tall
   "jobTitle": string,    // Stillingstittel fra annonsen
   "companyName": string, // Firmanavn fra annonsen
   "categories": [
     {
       "name": string,    // Kategori (f.eks. "Teknisk kompetanse", "Erfaring", etc.)
-      "match": number,   // 0-100, må være et tall
+      "match": number,   // 0-100, må være tall
       "details": [
         {
           "name": string,      // Spesifikk kompetanse/krav
-          "match": number,     // 0-100, må være et tall
+          "match": number,     // 0-100, må være tall
           "required": boolean, // true/false
           "reasoning": string  // Kort begrunnelse
         }

@@ -1,5 +1,11 @@
-import Link from "next/link";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { Metadata } from 'next';
+import Link from 'next/link';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+
+export const metadata: Metadata = {
+  title: 'Om oss - CV Match',
+  description: 'Lær mer om CV Match og hvordan vi hjelper jobbsøkere',
+};
 
 export default function AboutPage() {
   return (
@@ -15,83 +21,90 @@ export default function AboutPage() {
               Hjem
             </Link>
             <Link href="/match" className="hover:text-primary transition-colors">
-              Match CV
+              Match
             </Link>
-            <Link href="/about" className="hover:text-primary transition-colors">
+            <Link href="/batch" className="hover:text-primary transition-colors">
+              Batch
+            </Link>
+            <Link href="/about" className="text-primary font-medium transition-colors">
               Om oss
             </Link>
           </nav>
         </div>
       </header>
 
-      {/* Main content */}
       <main className="flex-1 py-12">
-        <div className="container max-w-4xl">
+        <div className="container max-w-4xl mx-auto px-4">
           <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8">
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
             Tilbake til forsiden
           </Link>
-
-          <div className="card p-8 mb-8">
-            <h1 className="text-3xl font-bold mb-6">Om CV Match & Feedback</h1>
+          
+          <div className="card p-8">
+            <h1 className="text-3xl font-bold mb-6">Om CV Match</h1>
             
-            <div className="prose max-w-none">
-              <p className="text-lg mb-6">
-                CV Match & Feedback er en webapplikasjon som bruker AI for å matche CV-er mot stillingsannonser og gi personlig tilbakemelding til jobbsøkere. Målet er å skape en mer transparent, rettferdig og respektfull rekrutteringsprosess.
-              </p>
-
-              <h2 className="text-2xl font-bold mt-8 mb-4">Vår visjon</h2>
+            <div className="prose prose-lg">
               <p className="mb-4">
-                Vi tror på en arbeidshverdag der alle jobbsøkere får en rettferdig vurdering og verdifull tilbakemelding, uavhengig av bakgrunn. Vår visjon er å demokratisere rekrutteringsprosessen ved å gi jobbsøkere verktøyene de trenger for å forstå hvordan de matcher med stillinger og hvordan de kan forbedre sine søknader.
+                CV Match er en AI-drevet tjeneste som hjelper jobbsøkere å forbedre sine jobbsøknader ved å matche deres CV mot konkrete stillingsannonser.
               </p>
-
-              <h2 className="text-2xl font-bold mt-8 mb-4">Hvordan det fungerer</h2>
+              
+              <h2 className="text-2xl font-semibold mt-8 mb-4">Vår historie</h2>
               <p className="mb-4">
-                Vår teknologi bruker avansert AI for å analysere både CV-er og stillingsannonser. Systemet identifiserer nøkkelkrav, ferdigheter, erfaringer og kvalifikasjoner fra begge dokumenter, og beregner deretter en matchprosent basert på hvor godt CV-en oppfyller kravene i stillingsannonsen.
+                CV Match ble startet i 2023 med et mål om å gjøre jobbsøkerprosessen enklere og mer effektiv både for arbeidssøkere og rekrutterere. 
+                Vi så hvordan AI kunne brukes for å gi mer objektive og detaljerte vurderinger av jobbsøknader, og ønsket å gjøre denne teknologien 
+                tilgjengelig for alle.
+              </p>
+              
+              <h2 className="text-2xl font-semibold mt-8 mb-4">Vår teknologi</h2>
+              <p className="mb-4">
+                Vi bruker state-of-the-art AI-teknologi for å analysere CV-er og stillingsannonser. Vår algoritme er spesielt trent på å identifisere 
+                både eksplisitte og implisitte krav i stillingsannonser, og vurdere hvordan din CV matcher disse kravene.
               </p>
               <p className="mb-4">
-                I tillegg til en total matchprosent, gir vi detaljert innsikt i hvordan du matcher på ulike kategorier som ferdigheter, erfaring og utdanning. Dette hjelper deg å forstå dine styrker og svakheter i forhold til den spesifikke stillingen.
+                Med vårt batch-analyseverktøy kan rekrutterere og HR-avdelinger effektivt vurdere flere kandidater mot samme stilling, 
+                og få en objektiv rangering og sammenligning.
               </p>
-
-              <h2 className="text-2xl font-bold mt-8 mb-4">Personlig tilbakemelding</h2>
+              
+              <h2 className="text-2xl font-semibold mt-8 mb-4">Personvern</h2>
               <p className="mb-4">
-                Det som virkelig skiller oss ut er vår personlige tilbakemelding. Basert på matchresultatet genererer vår AI konkrete forslag til hvordan du kan forbedre CV-en din for å øke sjansene for å bli innkalt til intervju. Dette kan inkludere forslag til hvilke ferdigheter du bør fremheve, hvilke erfaringer som er mest relevante, og hvordan du kan omformulere deler av CV-en for å bedre matche stillingsannonsen.
+                Vi tar personvern på alvor. Alle data som lastes opp til vår plattform behandles konfidensielt og slettes automatisk 
+                etter 30 dager. Vi følger GDPR og andre relevante personvernlover.
               </p>
-
-              <h2 className="text-2xl font-bold mt-8 mb-4">Personvern og sikkerhet</h2>
               <p className="mb-4">
-                Vi tar personvern på alvor. Alle opplastede CV-er og stillingsannonser behandles konfidensielt og slettes automatisk etter en viss periode. Vi bruker ikke dine data til andre formål enn å gi deg den matchingen og tilbakemeldingen du ber om.
+                Les mer om hvordan vi behandler dine data i vår <Link href="/privacy" className="text-primary hover:underline">personvernerklæring</Link>.
               </p>
-
-              <h2 className="text-2xl font-bold mt-8 mb-4">Kontakt oss</h2>
+              
+              <h2 className="text-2xl font-semibold mt-8 mb-4">Kontakt oss</h2>
               <p className="mb-4">
-                Har du spørsmål eller tilbakemeldinger? Vi vil gjerne høre fra deg! Send oss en e-post på <a href="mailto:kontakt@cvmatch.no" className="text-primary hover:underline">kontakt@cvmatch.no</a>.
+                Har du spørsmål eller tilbakemeldinger? Send oss en e-post på <a href="mailto:kontakt@cvmatch.no" className="text-primary hover:underline">kontakt@cvmatch.no</a>.
               </p>
             </div>
           </div>
         </div>
       </main>
-
+      
       {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="container">
+      <footer className="bg-muted py-8">
+        <div className="container mx-auto max-w-6xl px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
-              <p className="text-muted-foreground">
-                © 2024 CV Match & Feedback. Alle rettigheter reservert.
-              </p>
+              <h3 className="text-xl font-bold text-primary">CV Match</h3>
+              <p className="text-sm text-muted-foreground">AI-drevet CV-analyse og jobbmatching</p>
             </div>
-            <div className="flex space-x-6">
-              <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                Om oss
-              </Link>
-              <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+            <div className="flex flex-col md:flex-row gap-4 md:gap-8">
+              <Link href="/privacy" className="text-muted-foreground hover:text-primary transition-colors">
                 Personvern
               </Link>
-              <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="/terms" className="text-muted-foreground hover:text-primary transition-colors">
                 Vilkår
               </Link>
+              <Link href="/about" className="text-primary font-medium transition-colors">
+                Om oss
+              </Link>
             </div>
+          </div>
+          <div className="mt-6 pt-6 border-t border-border text-center text-sm text-muted-foreground">
+            &copy; {new Date().getFullYear()} CV Match. Alle rettigheter reservert.
           </div>
         </div>
       </footer>

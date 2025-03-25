@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-// Initialiser OpenAI-klienten med API-nøkkelen fra miljøvariabler
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_API_BASE_URL,
-  defaultQuery: { "api-version": "2023-05-15" }
-});
+import getOpenAIClient from '@/lib/openai-client';
 
 // Maksimal lengde for CV og stillingsannonse (omtrentlig antall tegn)
 const MAX_CV_LENGTH = 10000;
@@ -123,67 +116,77 @@ async function analyzeCvAndJob(cvText: string, jobText: string) {
     console.log('CV-tekst lengde:', cvText.length);
     console.log('Jobb-tekst lengde:', jobText.length);
     
+    // Get the OpenAI client from our modular configuration
+    const openai = getOpenAIClient();
+    
     // Bruk OpenAI for analyse
     console.log('Sender forespørsel til OpenAI...');
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "o3-mini",
       messages: [
         {
           role: "system",
-          content: `Du er en ekspert på rekruttering og CV-analyse. 
-          Din oppgave er å analysere en CV mot en spesifikk stillingsannonse og gi en detaljert vurdering av matchgraden.
-          
-          VIKTIG: 
-          1. Du MÅ alltid returnere et gyldig JSON-objekt, selv om du mangler informasjon.
-          2. Hvis du mangler informasjon, sett match-prosentene til 0 og legg til en forklaring i feedback.
-          3. Du MÅ returnere KUN JSON, ingen annen tekst eller forklaringer.
-          4. Du MÅ hente ut stillingstittel og firmanavn fra stillingsannonsen.
-          5. Bruk følgende struktur for JSON-responsen:
-          {
-            "overallMatch": number,
-            "jobTitle": string,
-            "companyName": string,
-            "categories": [
-              {
-                "name": string,
-                "match": number,
-                "details": [
-                  {
-                    "name": string,
-                    "match": number,
-                    "required": boolean,
-                    "reasoning": string
-                  }
-                ]
-              }
-            ],
-            "feedback": string[],
-            "strengths": string[],
-            "weaknesses": string[]
-          }
-          
-          Hvis du mangler informasjon, returner:
-          {
-            "overallMatch": 0,
-            "jobTitle": "Ukjent",
-            "companyName": "Ukjent",
-            "categories": [],
-            "feedback": ["Mangler tilstrekkelig informasjon for å utføre analyse"],
-            "strengths": [],
-            "weaknesses": []
-          }
-          
-          VIKTIG: Du må returnere KUN JSON, ingen annen tekst eller forklaringer.
-          IKKE start svaret med 'Beklager' eller lignende tekst.
-          IKKE legg til forklaringer eller kommentarer.
-          RETURNER KUN JSON.`
+          content: `Du er en erfaren rekrutteringsekspert. Analyser CV mot stillingsannonse og returner et JSON-objekt.
+VIKTIG: Alle numeriske verdier MÅ være tall, ikke tekst. For eksempel: 75 ikke "seventy-five".
+
+ANALYSE AV JOBBKRAV:
+1. Analyser stillingsannonsen GRUNDIG og identifiser ALLE krav og ønskede kvalifikasjoner.
+2. Skill tydelig mellom obligatoriske krav (required=true) og ønskelige kvalifikasjoner (required=false).
+3. Kategoriser kravene i passende kategorier (f.eks. "Teknisk kompetanse", "Erfaring", "Utdanning").
+4. For hvert krav, vurder hvor godt CV-en oppfyller dette kravet og gi en detaljert begrunnelse.
+
+Returner JSON med følgende struktur:
+{
+  "overallMatch": number, // 0-100, må være tall
+  "jobTitle": string,    // Stillingstittel fra annonsen
+  "companyName": string, // Firmanavn fra annonsen
+  "categories": [
+    {
+      "name": string,    // Kategori (f.eks. "Teknisk kompetanse", "Erfaring", etc.)
+      "match": number,   // 0-100, må være tall
+      "details": [
+        {
+          "name": string,      // Spesifikk kompetanse/krav
+          "match": number,     // 0-100, må være tall
+          "required": boolean, // true hvis obligatorisk, false hvis ønskelig
+          "reasoning": string  // Detaljert begrunnelse for match-score
+        }
+      ]
+    }
+  ],
+  "strengths": string[],    // Liste over kandidatens styrker relatert til stillingen
+  "weaknesses": string[],   // Liste over mangler/svakheter relatert til stillingen
+  "feedback": string[]      // Generelle tilbakemeldinger og anbefalinger
+}`
         },
         {
           role: "user",
-          content: `CV: ${cvText}\n\nStillingsannonse: ${jobText}`
+          content: `Analyser følgende CV mot stillingsannonsen og returner JSON.
+VIKTIG: Alle numeriske verdier (match, overallMatch) MÅ være tall (f.eks. 75), ikke tekst ("seventy-five").
+
+CV:
+${cvText}
+
+STILLINGSANNONSE:
+${jobText}
+
+Vurder:
+1. Formelle krav og utdanning
+2. Teknisk kompetanse og ferdigheter
+3. Arbeidserfaring og ansiennitet
+4. Personlige egenskaper
+5. Ledererfaring
+6. Bransjeerfaring
+7. Språkkunnskaper
+8. Prestasjoner og resultater
+
+VIKTIG: 
+- Analyser stillingskravene GRUNDIG
+- Identifiser ALLE obligatoriske og ønskelige kvalifikasjoner
+- Gi en detaljert vurdering av hvert krav
+- Returner KUN JSON, ingen annen tekst`
         }
-      ],
-      temperature: 0.1
+      ]
     });
 
     console.log('Mottok respons fra OpenAI');
