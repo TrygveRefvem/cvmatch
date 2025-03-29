@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import * as cheerio from 'cheerio';
 import getOpenAIClient from '@/lib/openai-client';
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Initialiser OpenAI-klienten med API-nøkkelen fra miljøvariabler
 const openai = new OpenAI({
@@ -13,6 +18,24 @@ const openai = new OpenAI({
 // Maksimal lengde for CV og stillingsannonse (omtrentlig antall tegn)
 const MAX_CV_LENGTH = 10000;
 const MAX_JOB_LENGTH = 8000;
+
+// Helper function to check user access (trial or subscription)
+async function checkUserAccess(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { trialEndsAt: true, stripeSubscriptionStatus: true },
+  });
+
+  if (!user) return false; // User not found
+
+  const now = new Date();
+  const hasActiveTrial = user.trialEndsAt ? user.trialEndsAt > now : false;
+  const hasActiveSubscription = user.stripeSubscriptionStatus === 'active';
+
+  console.log(`Access check for user ${userId}: Trial ends=${user.trialEndsAt}, Active trial=${hasActiveTrial}, Sub status=${user.stripeSubscriptionStatus}, Active sub=${hasActiveSubscription}`);
+
+  return hasActiveTrial || hasActiveSubscription;
+}
 
 export async function GET() {
   try {
@@ -70,6 +93,31 @@ function extractTextFromHtml(html: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  // --- Authentication & Access Check --- 
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    console.log('Unauthorized attempt (no session or user ID) to access /api/analyze');
+    return NextResponse.json({ error: 'Autentisering påkrevd' }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+  const hasAccess = await checkUserAccess(userId);
+
+  if (!hasAccess) {
+    console.log(`Access denied for user ${userId} (no active trial or subscription)`);
+    return NextResponse.json(
+      { 
+        error: 'Tilgang nektet. Din prøveperiode kan ha utløpt, eller du har ingen aktivt abonnement.',
+        // Add info to potentially guide user to subscribe
+        needsSubscription: true, 
+      },
+      { status: 402 } // 402 Payment Required
+    );
+  }
+
+  console.log(`Analysis request received from authenticated user: ${session.user?.email} (Access granted)`);
+  // --- End Authentication & Access Check ---
+
   try {
     console.log('Starter analyse av CV');
     console.log('OpenAI API Key:', process.env.OPENAI_API_KEY ? 'Er satt' : 'Mangler');
@@ -112,22 +160,27 @@ export async function POST(request: NextRequest) {
         console.log('Content-Type:', contentType);
         
         if (contentType?.includes('application/pdf')) {
-          throw new Error('PDF-stillingsannonser støttes ikke ennå');
+          console.warn('PDF job descriptions are not supported yet.');
+          jobText = 'Stillingsannonse er en PDF (ikke støttet ennå).'; 
         } else {
           // Håndter HTML og tekst
           const rawText = await response.text();
           jobText = contentType?.includes('html') ? extractTextFromHtml(rawText) : rawText;
           console.log('Hentet stillingsannonse, lengde:', jobText.length);
+          if (!jobText) {
+             console.warn('Could not extract text from fetched URL content.');
+             jobText = 'Kunne ikke hente tekst fra stillingsannonse URL.';
+          }
         }
       } catch (error: unknown) {
-        if (error instanceof Error) {
-          console.error('Feil ved henting av stillingsannonse:', error.message);
-        }
-        return NextResponse.json(
-          { error: error instanceof Error ? error.message : 'Kunne ikke hente stillingsannonse fra URL' },
-          { status: 400 }
-        );
+        const errorMessage = `Kunne ikke hente eller behandle stillingsannonse fra URL: ${error instanceof Error ? error.message : 'Ukjent feil'}`;
+        console.error('Feil ved henting av stillingsannonse:', errorMessage);
+        return NextResponse.json({ error: errorMessage, analysisResult: null }, { status: 400 });
       }
+    }
+    
+    if (!jobText) {
+      return NextResponse.json({ error: 'Kunne ikke hente eller finne tekst for stillingsannonse' }, { status: 400 });
     }
     
     // Forkort tekstene for å unngå token-begrensninger
@@ -137,7 +190,39 @@ export async function POST(request: NextRequest) {
     // Analyser CV og stillingsannonse med OpenAI
     const analysisResult = await analyzeCvAndJob(truncatedCvText, truncatedJobText);
     
-    return NextResponse.json(analysisResult);
+    // Check if analysis itself resulted in an error
+    if (analysisResult?.error) {
+      // Consider not saving if the analysis itself errored?
+      return NextResponse.json({ error: analysisResult.error, analysisResult: null }, { status: 500 });
+    }
+
+    // --- Save successful analysis result to database --- 
+    if (analysisResult && userId) {
+        try {
+            console.log(`Attempting to save analysis result for user ${userId}`);
+            // Extract data - ensure types match schema (e.g., overallMatch is number)
+            const percentage = typeof analysisResult.overallMatch === 'number' ? analysisResult.overallMatch : null;
+            const title = typeof analysisResult.jobTitle === 'string' ? analysisResult.jobTitle : null;
+            
+            await prisma.analysisResult.create({
+                data: {
+                    userId: userId,
+                    jobDescriptionUrl: jobSource.url || null, // Save URL if it was provided
+                    jobTitle: title, // Extracted title
+                    matchPercentage: percentage, // Extracted percentage
+                    resultJson: analysisResult, // Store the full result object
+                },
+            });
+            console.log(`Successfully saved analysis result for user ${userId}`);
+        } catch (dbError) {
+            // Log the error but don't block the response to the user
+            console.error(`Failed to save analysis result for user ${userId}:`, dbError);
+        }
+    }
+    // --- End Save analysis result --- 
+
+    // Return the analysis result to the frontend
+    return NextResponse.json({ analysisResult });
   } catch (error) {
     console.error('Error analyzing CV:', error);
     let errorMessage = 'Det oppstod en feil under analysen';

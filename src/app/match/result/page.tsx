@@ -34,13 +34,28 @@ export default function ResultPage() {
     const storedResult = sessionStorage.getItem('analysisResult');
     if (storedResult) {
       try {
-        setResult(JSON.parse(storedResult));
+        const parsedData = JSON.parse(storedResult);
+
+        // Check if the expected nested structure exists
+        if (parsedData && parsedData.analysisResult) {
+          setResult(parsedData.analysisResult as AnalysisResult);
+        } else {
+          // Handle cases where the structure might be different or directly stored (less likely now)
+          console.warn("Could not find 'analysisResult' key in stored data. Attempting to use root object.");
+          // Fallback: Try using the parsed data directly if analysisResult key is missing
+          // This might happen if an error object was stored directly
+          if (parsedData && typeof parsedData.overallMatch !== 'undefined') { 
+             setResult(parsedData as AnalysisResult);
+          } else {
+             setError(parsedData?.error || 'Uventet dataformat mottatt.'); 
+          }
+        }
       } catch (error) {
         console.error('Feil ved parsing av resultat:', error);
-        setError('Kunne ikke laste analyseresultatet');
+        setError('Kunne ikke laste analyseresultatet (parsing feilet).');
       }
     } else {
-      setError('Ingen analyseresultat funnet');
+      setError('Ingen analyseresultat funnet i sessionStorage.');
     }
   }, []);
 
@@ -148,7 +163,7 @@ export default function ResultPage() {
               <div className="text-center">
                 <div className="text-4xl font-bold mb-1 flex items-center justify-center">
                   <span className={getMatchColorClass(result.overallMatch)}>
-                    {result.overallMatch}%
+                    {result?.overallMatch ?? '-'}%
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">Total match</p>

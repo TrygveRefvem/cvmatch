@@ -2,16 +2,27 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, DocumentArrowUpIcon, GlobeAltIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, DocumentArrowUpIcon, GlobeAltIcon, ArrowPathIcon, CreditCardIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 import * as pdfjsLib from 'pdfjs-dist';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
 
 // API URL konfigurasjon
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
+// Initialise Stripe.js Promise (outside component for performance)
+// Ensure your public key is set in environment variables!
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : Promise.resolve<Stripe | null>(null);
+
 // Initialiser PDF.js worker
 // Dette må gjøres i en useEffect siden det er klientside-kode
 let pdfWorkerInitialized = false;
+
+// Get Price IDs from environment variables
+const candidatePriceId = process.env.NEXT_PUBLIC_STRIPE_CANDIDATE_PRICE_ID; // Renamed for clarity & convention
+const recruiterPriceId = process.env.NEXT_PUBLIC_STRIPE_RECRUITER_PRICE_ID; // Renamed for clarity & convention
 
 export default function MatchPage() {
   const router = useRouter();
@@ -24,6 +35,10 @@ export default function MatchPage() {
   const [jobText, setJobText] = useState<string>("");
   const [useUrl, setUseUrl] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // State for subscription requirement and checkout process
+  const [needsSubscription, setNeedsSubscription] = useState<boolean>(false);
+  const [isRedirectingToCheckout, setIsRedirectingToCheckout] = useState<boolean>(false);
 
   // Initialiser PDF.js worker
   useEffect(() => {
@@ -145,43 +160,103 @@ export default function MatchPage() {
     e.preventDefault();
     setIsAnalyzing(true);
     setError(null);
+    setNeedsSubscription(false); // Reset subscription need on new analysis attempt
     
     try {
-      // Forbered data for API-kallet
-      const jobSource = useUrl 
-        ? { url: jobUrl, text: "" } 
-        : { url: "", text: jobText };
+      const jobSource = useUrl ? { url: jobUrl, text: "" } : { url: "", text: jobText };
       
-      // Send data til API-en
       const response = await fetch(`${API_URL}/api/analyze`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          cvText,
-          jobSource,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cvText, jobSource }),
       });
       
+      const result = await response.json(); // Always try to parse JSON
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Det oppstod en feil under analysen');
+        // Check for specific 402 Payment Required status
+        if (response.status === 402 && result?.needsSubscription) {
+            setError(result.error || 'Abonnement kreves for å fortsette analysen.');
+            setNeedsSubscription(true);
+        } else {
+             // Handle other API errors
+            setError(result.error || 'Det oppstod en feil under analysen');
+        }
+        // Throw an error to stop execution if response is not ok
+        throw new Error(result.error || `Request failed with status ${response.status}`);
       }
       
-      // Hent analyseresultatet
-      const result = await response.json();
-      
-      // Lagre resultatet i sessionStorage for å vise det på resultatsiden
+      // If response is OK (2xx status)
       sessionStorage.setItem('analysisResult', JSON.stringify(result));
-      
-      // Naviger til resultatsiden
       router.push('/match/result');
-    } catch (error) {
+
+    } catch (error: any) {
+      // Error is already set in the !response.ok block if it came from API
+      // Only set generic error if fetch itself failed or JSON parsing failed before setting error
+      if (!error) {
+          setError(error.message || 'Det oppstod en uventet feil under analysen');
+      } 
       console.error('Feil ved analyse:', error);
-      setError(error instanceof Error ? error.message : 'Det oppstod en feil under analysen');
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  // Modify function to accept priceId
+  const handleSubscribeClick = async (priceId: string | undefined) => {
+    setError(null);
+
+    if (!priceId) {
+      setError("Pris-ID for valgt plan er ikke konfigurert riktig.");
+      console.error('Missing Price ID for selected plan.');
+      return;
+    }
+
+    setIsRedirectingToCheckout(true);
+
+    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+        setError("Stripe er ikke konfigurert riktig (manglende publiserbar nøkkel).");
+        setIsRedirectingToCheckout(false);
+        return;
+    }
+
+    try {
+      // 1. Create a checkout session on the backend, passing the priceId
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ priceId }), // Send the selected priceId
+      });
+
+      const sessionData = await response.json();
+
+      if (!response.ok || !sessionData.id) {
+        throw new Error(sessionData.error || 'Kunne ikke opprette Stripe checkout økt.');
+      }
+
+      // 2. Redirect to Stripe Checkout
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error("Stripe.js kunne ikke lastes inn.");
+      }
+
+      const { error: stripeError } = await stripe.redirectToCheckout({ 
+          sessionId: sessionData.id 
+      });
+
+      if (stripeError) {
+        console.error("Stripe redirectToCheckout error:", stripeError);
+        setError(`Kunne ikke omdirigere til betaling: ${stripeError.message}`);
+      }
+      // If redirection fails, stop loading state
+      setIsRedirectingToCheckout(false);
+
+    } catch (error: any) {
+      console.error("Error during subscribe click:", error);
+      setError(error.message || "En feil oppstod under oppretting av abonnement.");
+      setIsRedirectingToCheckout(false);
     }
   };
 
@@ -346,99 +421,146 @@ export default function MatchPage() {
               </p>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+                <div className={`border px-4 py-3 rounded mb-6 ${needsSubscription ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
                   {error}
+                  {needsSubscription && (
+                    <p className="mt-2 text-sm">
+                      Klikk på "Abonner nå" for å velge en plan og få full tilgang.
+                    </p>
+                  )}
                 </div>
               )}
 
-              <form onSubmit={handleSubmitJob}>
-                <div className="mb-6">
-                  <div className="flex space-x-4 mb-6">
-                    <button
-                      type="button"
-                      className={`flex-1 py-2 px-4 rounded-md ${
-                        useUrl
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-secondary-foreground"
-                      }`}
-                      onClick={() => setUseUrl(true)}
-                    >
-                      <GlobeAltIcon className="h-5 w-5 inline-block mr-2" />
-                      URL
-                    </button>
-                    <button
-                      type="button"
-                      className={`flex-1 py-2 px-4 rounded-md ${
-                        !useUrl
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-secondary-foreground"
-                      }`}
-                      onClick={() => setUseUrl(false)}
-                    >
-                      <DocumentArrowUpIcon className="h-5 w-5 inline-block mr-2" />
-                      Tekst
-                    </button>
+              <fieldset disabled={isRedirectingToCheckout}>
+                <form onSubmit={!needsSubscription ? handleSubmitJob : (e) => e.preventDefault()}>
+                  <div className="mb-6">
+                    <div className="flex space-x-4 mb-6">
+                      <button
+                        type="button"
+                        className={`flex-1 py-2 px-4 rounded-md ${
+                          useUrl
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground"
+                        }`}
+                        onClick={() => setUseUrl(true)}
+                      >
+                        <GlobeAltIcon className="h-5 w-5 inline-block mr-2" />
+                        URL
+                      </button>
+                      <button
+                        type="button"
+                        className={`flex-1 py-2 px-4 rounded-md ${
+                          !useUrl
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground"
+                        }`}
+                        onClick={() => setUseUrl(false)}
+                      >
+                        <DocumentArrowUpIcon className="h-5 w-5 inline-block mr-2" />
+                        Tekst
+                      </button>
+                    </div>
+
+                    {useUrl ? (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          URL til stillingsannonse
+                        </label>
+                        <input
+                          type="url"
+                          value={jobUrl}
+                          onChange={(e) => setJobUrl(e.target.value)}
+                          placeholder="f.eks. https://www.finn.no/job/fulltime/ad.html?finnkode=123456789"
+                          className="input mb-2"
+                          required={!needsSubscription}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Lim inn URL-en til stillingsannonsen du vil matche CV-en din mot.
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Tekst fra stillingsannonse
+                        </label>
+                        <textarea
+                          value={jobText}
+                          onChange={(e) => setJobText(e.target.value)}
+                          placeholder="Kopier og lim inn teksten fra stillingsannonsen her..."
+                          className="input min-h-[200px]"
+                          required={!needsSubscription}
+                        ></textarea>
+                      </div>
+                    )}
                   </div>
 
-                  {useUrl ? (
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        URL til stillingsannonse
-                      </label>
-                      <input
-                        type="url"
-                        value={jobUrl}
-                        onChange={(e) => setJobUrl(e.target.value)}
-                        placeholder="f.eks. https://www.finn.no/job/fulltime/ad.html?finnkode=123456789"
-                        className="input mb-2"
-                        required
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Lim inn URL-en til stillingsannonsen du vil matche CV-en din mot.
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Tekst fra stillingsannonse
-                      </label>
-                      <textarea
-                        value={jobText}
-                        onChange={(e) => setJobText(e.target.value)}
-                        placeholder="Kopier og lim inn teksten fra stillingsannonsen her..."
-                        className="input min-h-[200px]"
-                        required
-                      ></textarea>
-                    </div>
-                  )}
-                </div>
+                  <div className="flex justify-between items-end pt-6">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="btn btn-secondary"
+                      disabled={isAnalyzing || isRedirectingToCheckout}
+                    >
+                      Tilbake
+                    </button>
 
-                <div className="flex justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="btn btn-secondary"
-                  >
-                    Tilbake
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={
-                      isAnalyzing || (useUrl ? !jobUrl : !jobText)
-                    }
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
-                        Analyserer...
-                      </>
-                    ) : (
-                      "Analyser match"
-                    )}
-                  </button>
-                </div>
-              </form>
+                    <div className="flex gap-4">
+                      {needsSubscription ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleSubscribeClick(candidatePriceId)}
+                            className="btn btn-primary bg-blue-600 hover:bg-blue-700 flex-col h-auto items-center"
+                            disabled={isRedirectingToCheckout || !candidatePriceId}
+                            title={!candidatePriceId ? "Candidate plan not configured" : ""}
+                          >
+                            {isRedirectingToCheckout ? (
+                              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <>
+                                <span className="text-sm font-semibold">Candidate</span>
+                                <span className="text-xs">(kr 4.99/mnd)</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSubscribeClick(recruiterPriceId)}
+                            className="btn btn-primary bg-green-600 hover:bg-green-700 flex-col h-auto items-center"
+                            disabled={isRedirectingToCheckout || !recruiterPriceId}
+                            title={!recruiterPriceId ? "Recruiter plan not configured" : ""}
+                          >
+                            {isRedirectingToCheckout ? (
+                              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <>
+                                <span className="text-sm font-semibold">Recruiter Pro</span>
+                                <span className="text-xs">(kr 49/mnd)</span>
+                              </>
+                            )}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="submit"
+                          className="btn btn-primary"
+                          disabled={isAnalyzing || (useUrl ? !jobUrl : !jobText)}
+                        >
+                          {isAnalyzing ? (
+                            <>
+                              <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
+                              Analyserer...
+                            </>
+                          ) : (
+                            "Analyser match"
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </form>
+              </fieldset>
             </div>
           )}
         </div>

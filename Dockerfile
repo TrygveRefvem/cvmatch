@@ -1,41 +1,56 @@
-# Build stage
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
 
+# Install dependencies only when needed
+FROM base AS deps
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json package-lock.json* ./
 
 # Install dependencies
 RUN npm ci
 
-# Copy source code
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build the application
-ENV NODE_ENV=production
+# Next.js collects anonymous telemetry data - disable it
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Mock environment variables for build only - these values are not used in production
+# They're just placeholders to allow the build to complete
+ENV NEXT_PUBLIC_MOCK_BUILD=true
+ENV OPENAI_API_KEY=mock_key_for_build_only
+ENV OPENAI_API_BASE_URL=https://mock.openai.com
+
+# Build the application
 RUN npm run build
 
-# Production stage
-FROM node:20-alpine AS runner
-
+# Production image, copy all the files and run next
+FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
 
-# Copy necessary files from builder
-COPY --from=builder /app/next.config.ts ./
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy built files
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Expose the port the app runs on
+# Set proper permissions
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# Expose port and define start command
 EXPOSE 3000
 
-# Azure OpenAI environment variables will be set during deployment
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-CMD ["node", ".next/standalone/server.js"] 
+# Use node directly instead of npm to avoid permission issues
+CMD ["node", "server.js"] 

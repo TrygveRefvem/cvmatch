@@ -161,3 +161,56 @@ Dette prosjektet er lisensiert under MIT-lisensen - se [LICENSE](LICENSE) filen 
 3. Commit endringene dine (`git commit -m 'Add some AmazingFeature'`)
 4. Push til branchen (`git push origin feature/AmazingFeature`)
 5. Åpne en Pull Request
+
+## Environment Variables
+
+The application requires the following environment variables:
+
+### OpenAI Configuration
+- `OPENAI_API_KEY`: Your OpenAI API key
+- `OPENAI_API_BASE_URL`: Set to "https://api.openai.com/v1"
+
+### Application Configuration
+- `NEXT_PUBLIC_API_URL`: The URL of your deployed application (e.g., "https://cvmatch-v2.azurewebsites.net")
+- `NODE_ENV`: Set to "production" in production environment
+- `WEBSITES_PORT`: Set to "3000" for the web app
+
+## Development
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Create a `.env.local` file with your environment variables:
+   ```
+   OPENAI_API_KEY=your-openai-api-key
+   OPENAI_API_BASE_URL=https://api.openai.com/v1
+   NEXT_PUBLIC_API_URL=http://localhost:3000
+   ```
+
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
+
+## Features
+
+- CV analysis using OpenAI's API
+- Job posting matching
+- Detailed feedback and improvement suggestions
+- Batch analysis capabilities
+
+## Security
+
+- OpenAI API keys are stored securely in Azure Web App configuration
+- All sensitive data is handled server-side
+- No API keys are exposed to the client
+
+## License
+
+[Your license information here]
