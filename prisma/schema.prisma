@@ -50,6 +50,10 @@ model User {
   accounts       Account[]
   sessions       Session[]
 
+  // Role
+  role          String    @default("CANDIDATE") // Default role is CANDIDATE
+  // Possible values: CANDIDATE, RECRUITER
+  
   // Trial Period Fields
   trialEndsAt    DateTime? // Date when the free trial expires
 
@@ -60,6 +64,7 @@ model User {
   stripeSubscriptionStatus String?   // e.g., 'active', 'canceled', 'past_due'
 
   analysisResults AnalysisResult[]
+  jobBatches             JobBatch[]       // Relation to JobBatches created by this user
 }
 
 model VerificationToken {
@@ -71,17 +76,49 @@ model VerificationToken {
 }
 
 model AnalysisResult {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String    @id @default(cuid())
+  userId            String    // Foreign key linking to the User model
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobTitle          String?   // Title of the job description used
+  jobDescriptionUrl String?   // URL of the job description
+  cvText            String?   // The raw text of the CV (Made optional)
+  jobDescriptionText String?  // The raw text of the job description (Made optional)
+  resultJson        Json      // The JSON result from OpenAI analysis
+  matchPercentage   Int?      // Store the calculated match percentage
+  feedback          String?   // Store general feedback
+  strengths         String?   // Store identified strengths
+  areasForImprovement String? // Store areas for improvement
+  questionsToAsk    String?   // Store suggested questions
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  userId String // Foreign key
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade) // Relation field
+  // Relation to JobBatch (optional)
+  jobBatchId        String?   // Foreign key linking to a JobBatch (if part of one)
+  jobBatch          JobBatch? @relation(fields: [jobBatchId], references: [id], onDelete: SetNull) // If batch deleted, nullify link
 
-  jobDescriptionUrl String? // URL of the job description analyzed
-  jobTitle          String? // Title of the job (extracted?)
-  matchPercentage   Int?    // The overall match percentage
-  resultJson        Json    // The full JSON response from the analysis API
+  // Field to track when rejection feedback was sent
+  rejectionSentAt   DateTime?
 
   @@index([userId, createdAt]) // Index for efficient fetching for a user
+}
+
+// New model for Job Batches managed by Recruiters
+model JobBatch {
+  id              String    @id @default(cuid())
+  title           String    // Name of the batch (e.g., "Senior Software Engineer Q3")
+  description     String?   // Optional details about the batch/job
+  
+  // Job Description details associated with this batch
+  jobDescriptionUrl String    // URL of the canonical job description for this batch
+  jobDescriptionText String?  // Fetched and stored text from the URL
+
+  widgetToken     String   @unique @default(cuid()) // Added field for external widget identification
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  userId          String    // Foreign key linking to the User (Recruiter)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade) // If recruiter deleted, delete batches
+  analysisResults AnalysisResult[] // Candidates (AnalysisResults) associated with this batch
+
+  @@index([userId])
 }

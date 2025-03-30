@@ -14,12 +14,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Håndter batch-ruter
-  if (pathname.startsWith('/batch')) {
-    console.log('Middleware: Håndterer batch-rute');
-    return NextResponse.next();
-  }
-
   // For alle andre ruter, fortsett som normalt
   return NextResponse.next();
 }
@@ -29,7 +23,5 @@ export const config = {
   matcher: [
     // Matcher alle API-ruter
     '/api/:path*',
-    // Matcher alle batch-ruter
-    '/batch/:path*',
   ],
 }; 

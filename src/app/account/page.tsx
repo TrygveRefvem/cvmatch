@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
 import SubscriptionButtons from '@/components/SubscriptionButtons';
+import ManageSubscriptionButton from '@/components/ManageSubscriptionButton';
 import Link from 'next/link';
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
@@ -103,7 +104,12 @@ export default async function AccountPage() {
               </div>
               <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
                 {isSubscribed ? (
-                  <p className="text-green-600 font-semibold">Status: Aktivt abonnement ({user.stripeSubscriptionStatus})</p>
+                  <div>
+                    <p className="text-green-600 font-semibold">Status: Aktivt abonnement ({user.stripeSubscriptionStatus})</p>
+                    {user.stripeCustomerId && (
+                      <ManageSubscriptionButton />
+                    )}
+                  </div>
                 ) : isTrialActive ? (
                   <div>
                     <p className="text-blue-600 font-semibold">Status: Prøveperiode aktiv</p>

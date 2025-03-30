@@ -7,11 +7,16 @@ const TRIAL_PERIOD_DAYS = 7; // Define trial duration
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, password, role } = await request.json();
 
     // 1. Validate input
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !role) {
       return NextResponse.json({ error: 'Mangler påkrevde felter' }, { status: 400 });
+    }
+
+    // Optional: More specific role validation
+    if (role !== 'CANDIDATE' && role !== 'RECRUITER') {
+      return NextResponse.json({ error: 'Ugyldig rolleverdi' }, { status: 400 });
     }
 
     // Basic email validation (consider a more robust library for production)
@@ -39,13 +44,14 @@ export async function POST(request: NextRequest) {
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_PERIOD_DAYS);
 
-    // 4. Create new user with trial end date
+    // 4. Create new user with trial end date and role
     const newUser = await prisma.user.create({
       data: {
         name,
         email,
         hashedPassword,
         trialEndsAt, // Set the trial end date
+        role, // <-- Include role in user creation
       },
     });
 
@@ -56,6 +62,7 @@ export async function POST(request: NextRequest) {
           id: newUser.id,
           name: newUser.name,
           email: newUser.email,
+          // role: newUser.role // Can uncomment if needed
         },
       },
       { status: 201 } // 201 Created

@@ -10,6 +10,7 @@ export default function SignUpPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('CANDIDATE');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +25,7 @@ export default function SignUpPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, role }),
       });
 
       const data = await response.json();
@@ -86,6 +87,41 @@ export default function SignUpPage() {
                 disabled={isLoading}
               />
             </div>
+            <fieldset className="mt-4">
+              <legend className="text-base font-medium text-gray-900">Jeg er en:</legend>
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center">
+                  <input
+                    id="role-candidate"
+                    name="role"
+                    type="radio"
+                    value="CANDIDATE"
+                    checked={role === 'CANDIDATE'}
+                    onChange={(e) => setRole(e.target.value)}
+                    disabled={isLoading}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="role-candidate" className="ml-3 block text-sm font-medium text-gray-700">
+                    Kandidat (Jobbsøker)
+                  </label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    id="role-recruiter"
+                    name="role"
+                    type="radio"
+                    value="RECRUITER"
+                    checked={role === 'RECRUITER'}
+                    onChange={(e) => setRole(e.target.value)}
+                    disabled={isLoading}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="role-recruiter" className="ml-3 block text-sm font-medium text-gray-700">
+                    Rekrutterer (Bedrift)
+                  </label>
+                </div>
+              </div>
+            </fieldset>
             <div>
               <label htmlFor="email-address" className="sr-only">
                 E-postadresse

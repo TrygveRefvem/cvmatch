@@ -1,8 +1,10 @@
-import NextAuth, { AuthOptions } from "next-auth"
-import { PrismaAdapter } from "@auth/prisma-adapter"
+import NextAuth, { AuthOptions, User } from "next-auth"
+import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { PrismaClient } from "@prisma/client"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
+import GoogleProvider from 'next-auth/providers/google'
+import GithubProvider from 'next-auth/providers/github'
 
 // Initialize Prisma Client
 const prisma = new PrismaClient()
@@ -11,51 +13,56 @@ const prisma = new PrismaClient()
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
+    // Add Google/GitHub if configured
+    // GoogleProvider({ ... }),
+    // GithubProvider({ ... }),
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
-        email: { label: "Email", type: "text", placeholder: "test@example.com" },
-        password: { label: "Password", type: "password" }
+        email: { label: "Email", type: "text", placeholder: "din@epost.no" },
+        password: { label: "Passord", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<User | null> {
         // Check if email and password were provided
         if (!credentials?.email || !credentials?.password) {
-          console.log('Missing credentials');
-          throw new Error('Vennligst oppgi e-post og passord');
+          console.log('Authorize failed: Missing credentials');
+          return null;
         }
 
         // Find user by email
-        const user = await prisma.user.findUnique({
+        const userFromDb = await prisma.user.findUnique({
           where: { email: credentials.email }
         });
 
         // If user not found or password not set, deny
-        if (!user || !user.hashedPassword) {
-          console.log('User not found or no password set for:', credentials.email);
-          throw new Error('Ugyldig e-post eller passord');
+        if (!userFromDb || !userFromDb.hashedPassword) {
+          console.log(`Authorize failed: User not found or no password for ${credentials.email}`);
+          return null;
         }
 
         // Verify password
         const isValidPassword = await bcrypt.compare(
           credentials.password,
-          user.hashedPassword
+          userFromDb.hashedPassword
         );
 
         if (!isValidPassword) {
-          console.log('Invalid password for:', credentials.email);
-          throw new Error('Ugyldig e-post eller passord');
+          console.log(`Authorize failed: Invalid password for ${credentials.email}`);
+          return null;
         }
 
-        console.log('Credentials authorized for:', user.email);
-        // Return user object if authentication successful
-        // Note: Only return necessary fields, not the password!
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          // Add any other fields you want accessible in the token/session
+        console.log(`User authorized successfully: ${userFromDb.email}`);
+        // Explicitly construct the return object matching the augmented User type
+        const authorizedUser: User = {
+          id: userFromDb.id,
+          email: userFromDb.email,
+          name: userFromDb.name,
+          image: userFromDb.image,
+          // Cast userFromDb to access the role, assuming migration was successful
+          role: (userFromDb as any).role, 
+          // emailVerified property removed as it's not in the augmented User type
         };
+        return authorizedUser;
       }
     })
     // Add other providers like Google, GitHub etc. here later if needed
@@ -64,24 +71,21 @@ export const authOptions: AuthOptions = {
     strategy: "jwt", // Using JWT for session strategy
   },
   callbacks: {
-    async jwt({ token, user }) {
-      // Persist the user ID and email from the user object (returned by authorize) to the JWT
+    async jwt({ token, user, account, profile }) {
+      // Persist the user id and role to the token right after signin
       if (user) {
         token.id = user.id;
-        token.email = user.email; // Ensure email is added if available
-        // You can add other user properties here if needed
-        // token.role = user.role; 
+        // The 'user' object passed here comes from the 'authorize' function or OAuth profile
+        // Ensure the 'role' property exists on the user object being passed
+        token.role = (user as any).role || 'CANDIDATE'; // Add user role to the token, default if missing
       }
       return token;
     },
     async session({ session, token }) {
-      // Send properties to the client, like user's id and email.
-      // Make sure the session.user type is updated accordingly if you add more properties.
-      if (token && session.user) {
-        session.user.id = token.id as string; // Add ID from token to session
-        session.user.email = token.email as string; // Add email from token to session
-        // You can add other properties from the token here
-        // session.user.role = token.role;
+      // Send properties to the client, like id and role.
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as string; // Add role to session user object
       }
       return session;
     }

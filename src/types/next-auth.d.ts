@@ -7,10 +7,9 @@ declare module "next-auth" {
    */
   interface Session {
     user: {
-      id: string; // Add the user ID here
-      // Add other custom properties like role here if needed
-      // role: string;
-    } & DefaultSession["user"]
+      id: string; // User ID from database
+      role: string; // Add role property
+    } & DefaultSession["user"] // Keep default properties like name, email, image
   }
 
   /**
@@ -18,16 +17,14 @@ declare module "next-auth" {
    * or the second parameter of the `session` callback, when using a database.
    */
   interface User extends DefaultUser {
-    // Add other custom properties like role here if needed
-    // role: string;
+    role: string; // Add role property
   }
 }
 
 declare module "next-auth/jwt" {
   /** Returned by the `jwt` callback and `getToken`, when using JWT sessions */
   interface JWT {
-    id: string; // Add the user ID here
-    // Add other custom properties like role here if needed
-    // role: string;
+    id: string; // User ID from database
+    role: string; // Add role property
   }
 } 
