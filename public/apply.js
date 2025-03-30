@@ -88,6 +88,27 @@
       .cvmatch-form-group input[type="file"] {
           padding: 3px; /* Smaller padding for file input */
       }
+      /* Added styles for consent */
+      .cvmatch-consent-group {
+        margin-bottom: 15px;
+        display: flex;
+        align-items: flex-start; /* Align items top */
+        font-size: 0.8em; /* Slightly smaller text */
+        color: #666;
+      }
+      .cvmatch-consent-group input[type="checkbox"] {
+        margin-right: 8px;
+        margin-top: 2px; /* Align checkbox better with text */
+        flex-shrink: 0;
+      }
+      .cvmatch-consent-group label {
+         line-height: 1.4;
+      }
+       .cvmatch-consent-group a {
+         color: #007bff;
+         text-decoration: underline;
+       }
+       /* --- End Added styles --- */
       .cvmatch-submit-button {
         background-color: #007bff;
         color: white;
@@ -185,6 +206,16 @@
             <label for="cvmatch-cv">Last opp CV (PDF, DOCX, TXT):</label>
             <input type="file" id="cvmatch-cv" name="cvFile" accept=".pdf,.docx,.txt" required>
           </div>
+          <!-- Added Consent Checkbox -->
+          <div class="cvmatch-consent-group">
+            <input type="checkbox" id="cvmatch-consent" name="gdprConsent" required>
+            <label for="cvmatch-consent">
+              Jeg bekrefter at jeg har lest og forstått 
+              <a href="/privacy" target="_blank" rel="noopener noreferrer">personvernerklæringen</a> 
+              og samtykker til at CVMatch behandler min CV og data på vegne av arbeidsgiveren for å analysere min søknad mot denne stillingen.
+            </label>
+          </div>
+          <!-- End Consent Checkbox -->
           <button type="submit" id="cvmatch-submit" class="cvmatch-submit-button">Send inn</button>
         </form>
         <div id="cvmatch-message-area" style="margin-top: 15px;" aria-live="polite"></div>
@@ -200,9 +231,15 @@
     const emailInput = modalBackdrop.querySelector("#cvmatch-email");
     const cvInput = modalBackdrop.querySelector("#cvmatch-cv");
     const messageArea = modalBackdrop.querySelector("#cvmatch-message-area");
+    const consentCheckbox = modalBackdrop.querySelector("#cvmatch-consent"); // Added
   
     // --- Event Listeners ---
     applyButton.addEventListener("click", () => {
+      // Reset form and disable submit on open
+      form.reset(); // Clear previous inputs
+      clearMessage();
+      consentCheckbox.checked = false; // Ensure checkbox is unchecked
+      submitButton.disabled = true; // Disable submit initially
       modalBackdrop.classList.add("cvmatch-visible");
     });
   
@@ -214,11 +251,23 @@
       }
     });
   
+    // Added: Enable/disable submit based on consent
+    consentCheckbox.addEventListener('change', () => {
+        submitButton.disabled = !consentCheckbox.checked;
+    });
+  
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       setLoading(true);
       clearMessage();
   
+      // Final check for consent (although button state should prevent this)
+      if (!consentCheckbox.checked) {
+          showMessage("Du må godkjenne personvernerklæringen for å sende inn.", "error");
+          setLoading(false);
+          return;
+      }
+
       const formData = new FormData();
       formData.append("widgetToken", WIDGET_TOKEN);
       formData.append("candidateEmail", emailInput.value);

@@ -9,21 +9,16 @@ import {
   DocumentTextIcon, 
   UserGroupIcon, 
   SparklesIcon,
+  CodeBracketIcon,
   ChevronLeftIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
 
 export default function HomePage() {
   const router = useRouter();
-  const [consentChecked, setConsentChecked] = useState(false);
-  const [showConsentError, setShowConsentError] = useState(false);
 
-  const handleStartClick = () => {
-    if (consentChecked) {
-      router.push('/match');
-    } else {
-      setShowConsentError(true);
-    }
+  const handleRecruiterStart = () => {
+    router.push('/recruit');
   };
 
   return (
@@ -39,10 +34,10 @@ export default function HomePage() {
               className="text-center mb-12"
             >
               <h1 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight">
-                Din CV. Din mulighet. <span className="text-primary">Forbedret.</span>
+                Effektiviser rekrutteringen med <span className="text-primary">AI-analyse</span>
               </h1>
               <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
-                AI-drevet CV-analyse som gir deg innsikt i hvordan din profil matcher drømmejobben.
+                Få dyp innsikt i kandidater på sekunder. Sammenlign og velg de beste talentene ved hjelp av AI.
               </p>
             </motion.div>
 
@@ -54,12 +49,11 @@ export default function HomePage() {
                 className="space-y-6"
               >
                 <div className="space-y-5">
-                  {/* Image Carousel */}
                   <ImageCarousel />
                   
                   <div className="text-center space-y-2">
-                    <h3 className="text-lg font-semibold text-foreground">Se hvordan det fungerer</h3>
-                    <p className="text-sm text-muted-foreground">Fra jobbsøk til detaljert CV-analyse på sekunder</p>
+                    <h3 className="text-lg font-semibold text-foreground">Kraften av AI i rekruttering</h3>
+                    <p className="text-sm text-muted-foreground">Se hvordan CV Match transformerer din ansettelsesprosess.</p>
                   </div>
                 </div>
               </motion.div>
@@ -74,9 +68,9 @@ export default function HomePage() {
                   <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                     <DocumentTextIcon className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="text-2xl font-semibold">Detaljert CV-analyse</h3>
+                  <h3 className="text-2xl font-semibold">Integrert AI-Analyse</h3>
                   <p className="text-muted-foreground">
-                    Last opp din CV og få en detaljert analyse av dine ferdigheter, erfaringer og styrker.
+                    Motta automatisk analyse av hver CV mot stillingsbeskrivelsen for raskere screening.
                   </p>
                 </div>
 
@@ -84,9 +78,9 @@ export default function HomePage() {
                   <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                     <SparklesIcon className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="text-2xl font-semibold">Stillingssamsvar</h3>
+                  <h3 className="text-2xl font-semibold">Kandidatrangering & Sammenligning</h3>
                   <p className="text-muted-foreground">
-                    Matchverdier for hver kompetanse og erfaring mot stillingsannonsen, med konkrete forbedringsforslag.
+                    Ranger kandidater basert på match og sammenlign de beste side-om-side for enklere beslutninger.
                   </p>
                 </div>
 
@@ -94,9 +88,19 @@ export default function HomePage() {
                   <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                     <UserGroupIcon className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="text-2xl font-semibold">Batch-analyse</h3>
+                  <h3 className="text-2xl font-semibold">Sømløs Kandidathåndtering</h3>
                   <p className="text-muted-foreground">
-                    Analysér flere kandidater mot samme stilling og få en sammenligningsrapport.
+                    Organiser kandidater i egne batcher, oppdater status og administrer hele prosessen på ett sted.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                    <CodeBracketIcon className="w-6 h-6 text-primary" />
+                  </div>
+                  <h3 className="text-2xl font-semibold">Enkel Integrasjon (Widget)</h3>
+                  <p className="text-muted-foreground">
+                    Legg til "Søk med CVMatch"-knappen direkte på dine stillingsannonser for å motta søknader effektivt.
                   </p>
                 </div>
               </motion.div>
@@ -108,49 +112,16 @@ export default function HomePage() {
               transition={{ duration: 0.8, delay: 0.5 }}
               className="bg-card p-8 rounded-2xl shadow-sm max-w-3xl mx-auto"
             >
-              <h2 className="text-2xl font-semibold mb-6 text-center">Kom i gang</h2>
-
-              <div className="mb-6">
-                <div className="flex items-start mb-2">
-                  <input 
-                    type="checkbox" 
-                    id="gdprConsent"
-                    className="mt-1 mr-3" 
-                    checked={consentChecked}
-                    onChange={() => {
-                      setConsentChecked(!consentChecked);
-                      if (showConsentError) setShowConsentError(false);
-                    }}
-                  />
-                  <label htmlFor="gdprConsent" className="text-sm text-muted-foreground">
-                    Jeg godtar at min CV og stillingsdata behandles i samsvar med 
-                    <Link href="/privacy" className="text-primary hover:underline ml-1">
-                      personvernerklæringen
-                    </Link>. Dataene blir slettet etter 30 dager.
-                  </label>
-                </div>
-                {showConsentError && (
-                  <p className="text-red-500 text-sm mt-1">
-                    Du må godkjenne personvernerklæringen for å fortsette.
-                  </p>
-                )}
-              </div>
+              <h2 className="text-2xl font-semibold mb-6 text-center">Klar til å ansette smartere?</h2>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button
-                  onClick={handleStartClick}
-                  className={`btn btn-primary flex items-center justify-center py-6 px-8 rounded-full text-lg ${!consentChecked ? 'opacity-50' : ''}`}
+                  onClick={handleRecruiterStart}
+                  className="btn btn-primary flex items-center justify-center py-6 px-8 rounded-full text-lg"
                 >
-                  Start analysen
+                  Gå til Rekrutterer-Dashboard
                   <ArrowRightIcon className="ml-2 h-5 w-5" />
                 </button>
-                <Link 
-                  href="/batch" 
-                  className={`btn btn-secondary flex items-center justify-center py-6 px-8 rounded-full text-lg ${!consentChecked ? 'opacity-50 pointer-events-none' : ''}`}
-                  onClick={(e) => !consentChecked && e.preventDefault()}
-                >
-                  Batch-analyse
-                </Link>
               </div>
             </motion.div>
           </div>

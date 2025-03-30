@@ -29,13 +29,13 @@ interface AnalysisCategory {
 }
 
 const formatDate = (date: Date | string | null): string => {
-  if (!date) return 'N/A';
+  if (!date) return 'I/T';
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   try {
     return format(dateObj, 'PPP', { locale: nb });
   } catch (error) {
     console.error("Error formatting date:", error);
-    return 'Invalid Date';
+    return 'Ugyldig dato';
   }
 };
 
@@ -288,7 +288,7 @@ export default function BatchDetailPage() {
           if (response.status === 404) throw new Error('Batch ikke funnet eller ikke tilgang.');
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to fetch batch details');
+            throw new Error(errorData.error || 'Kunne ikke hente batch-detaljer');
           }
           const data: BatchData = await response.json();
           setBatchData(data);
@@ -332,7 +332,7 @@ export default function BatchDetailPage() {
               analysisResults: processedCandidates
           });
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Could not load batch details.');
+          setError(err instanceof Error ? err.message : 'Kunne ikke laste batch-detaljer.');
         } finally {
           setIsLoading(false);
         }
@@ -388,7 +388,7 @@ export default function BatchDetailPage() {
         setSelectedCandidateIds((prev: string[]) => prev.filter((id: string) => id !== candidateResultId));
       } catch (err) {
         console.error("Error deleting candidate analysis:", err);
-        setDeleteError(err instanceof Error ? err.message : 'En feil oppstod ved sletting.');
+        setDeleteError(err instanceof Error ? err.message : 'Sletting feilet.');
       } finally {
         setDeletingId(null);
       }
@@ -420,7 +420,7 @@ export default function BatchDetailPage() {
   };
   (function() {
     var script = document.createElement('script');
-    script.src = "${process.env.NEXT_PUBLIC_APP_URL || ''}/widget/apply.js";
+    script.src = "${process.env.NEXT_PUBLIC_APP_URL || ''}/apply.js";
     script.async = true;
     document.body.appendChild(script);
   })();
@@ -433,7 +433,7 @@ export default function BatchDetailPage() {
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
       }, (err) => {
-        console.error('Failed to copy embed code: ', err);
+        console.error('Kunne ikke kopiere integreringskode: ', err);
       });
     }
   };
@@ -497,7 +497,7 @@ export default function BatchDetailPage() {
   // Function to handle triggering the comparison (fetches JSON)
   const handleCompareFilteredCandidates = async () => {
     if (filterStatus === 'ALL' || filteredCandidates.length < 2) {
-      alert("Vennligst velg et spesifikt statusfilter med minst to kandidater for å sammenligne.");
+      alert("Velg en status (ikke 'Alle', 'Avvist' eller 'Ansatt') med minst to kandidater for å sammenligne.");
       return;
     }
     setIsComparing(true);
@@ -514,11 +514,11 @@ export default function BatchDetailPage() {
       });
 
       if (!response.ok) {
-        let errorDetails = 'Unknown error';
+        let errorDetails = 'Ukjent feil';
         try { 
             const errorData = await response.json();
-            errorDetails = errorData.error || `API error: ${response.status}`;
-            if(errorData.details) errorDetails += ` Details: ${JSON.stringify(errorData.details)}`;
+            errorDetails = errorData.error || `API-feil: ${response.status}`;
+            if(errorData.details) errorDetails += ` Detaljer: ${JSON.stringify(errorData.details)}`;
         } catch (e) { /* Ignore if response wasn't JSON */ }
         throw new Error(errorDetails);
       }
@@ -530,7 +530,7 @@ export default function BatchDetailPage() {
 
     } catch (error) {
       console.error("Comparison API Error:", error);
-      setComparisonError(error instanceof Error ? error.message : "En feil oppstod under sammenligningen.");
+      setComparisonError(error instanceof Error ? error.message : "Sammenligning feilet.");
     } finally {
       setIsComparing(false);
     }
@@ -551,7 +551,7 @@ export default function BatchDetailPage() {
     );
   }
   if (!batchDetails) {
-    return <div className="flex items-center justify-center min-h-screen"><p>Kunne ikke laste batch detaljer.</p></div>;
+    return <div className="flex items-center justify-center min-h-screen"><p>Kunne ikke laste batch-detaljer.</p></div>;
   }
 
   const allCandidates = batchDetails.analysisResults;
@@ -594,7 +594,7 @@ export default function BatchDetailPage() {
                     </button>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                    Merk: Du må sørge for at widget-skriptet (`/widget/apply.js`) er tilgjengelig fra din server/hosting.
+                    Merk: Widget-skriptet (`/apply.js`) må være tilgjengelig fra serveren din.
                 </p>
                  {/* Add Test Widget Link */} 
                  <div className="mt-4">
@@ -602,7 +602,7 @@ export default function BatchDetailPage() {
                          href={`/recruit/widget-test/${batchDetails.id}`}
                          className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
                      >
-                         Test Widget på en demosider &rarr;
+                         Test widgeten &rarr;
                      </Link>
                  </div>
             </div>
@@ -642,23 +642,23 @@ export default function BatchDetailPage() {
                       className="btn btn-secondary btn-xs ml-auto"
                       disabled={isComparing || filterStatus === 'ALL' || filterStatus === CandidateStatus.REJECTED || filterStatus === CandidateStatus.HIRED || filteredCandidates.length < 2}
                       title={ (filterStatus === 'ALL' || filterStatus === CandidateStatus.REJECTED || filterStatus === CandidateStatus.HIRED || filteredCandidates.length < 2) 
-                              ? "Velg en aktiv status (f.eks. Runde 2) med minst 2 kandidater for å sammenligne"
+                              ? "Velg en status (ikke 'Alle', 'Avvist' eller 'Ansatt') med minst 2 kandidater for å sammenligne"
                               : `Sammenlign ${filteredCandidates.length} kandidater i status '${formatCandidateStatus(filterStatus as CandidateStatus)}'`
                             }
                 >
-                    {isComparing ? 'Sammenligner...' : `Analyser valgt status (${filteredCandidates.length})`}
+                    {isComparing ? 'Sammenligner...' : `Sammenlign status (${filteredCandidates.length})`}
                 </button>
             </div>
 
             {/* Display Comparison Results/Errors - Now Renders Structured JSON */} 
             {isComparing && (
                   <div className="my-4 p-4 border rounded-md text-center animate-pulse">
-                      <p className="text-sm text-muted-foreground">Kjører LLM-sammenligning, vennligst vent...</p>
+                      <p className="text-sm text-muted-foreground">Kjører AI-sammenligning, vennligst vent...</p>
                   </div>
             )}
              {comparisonError && (
                  <div className="my-4 p-4 border rounded-md bg-red-50 border-red-200">
-                     <p className="text-sm font-semibold text-red-700">Feil under sammenligning:</p>
+                     <p className="text-sm font-semibold text-red-700">Sammenligningsfeil:</p>
                      <p className="text-xs text-red-600 mt-1">{comparisonError}</p>
                  </div>
              )}
@@ -796,7 +796,7 @@ export default function BatchDetailPage() {
                           onClick={() => handleOpenFeedbackModal(candidate.id)}
                           disabled={!!deletingId || !!updatingStatusId || !!candidate.rejectionSentAt}
                           className={`text-muted-foreground hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed p-1 rounded`}
-                          title={candidate.rejectionSentAt ? `Avslag sendt ${formatDate(candidate.rejectionSentAt)}` : "Forhåndsvis avslag"}
+                          title={candidate.rejectionSentAt ? `Avslag sendt ${formatDate(candidate.rejectionSentAt)}` : "Send/Vis avslag"}
                         >
                           <EnvelopeIcon className={`h-4 w-4 ${candidate.rejectionSentAt ? 'text-green-600' : ''}`} />
                         </button>
@@ -823,7 +823,7 @@ export default function BatchDetailPage() {
                 <table className="min-w-full divide-y divide-border">
                   <thead className="bg-muted/50 sticky top-0 z-10">
                     <tr>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider sticky left-0 bg-inherit z-20 min-w-[200px]">Kriterie</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider sticky left-0 bg-inherit z-20 min-w-[200px]">Kriterium</th>
                       {candidatesToCompare.map(candidate => (
                         <th key={candidate.id} scope="col" className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider min-w-[150px]">
                           <div className="flex flex-col items-center">
@@ -850,7 +850,7 @@ export default function BatchDetailPage() {
                             <td 
                               className="px-4 py-3 whitespace-nowrap text-sm font-medium text-foreground sticky left-0 z-10 bg-inherit cursor-pointer hover:bg-muted/80"
                               onClick={() => toggleDetailExpansion(detailInfo.name)}
-                              title={`Klikk for ${isExpanded ? 'å lukke' : 'å vise'} begrunnelse`}
+                              title={`Klikk for ${isExpanded ? 'å skjule' : 'å vise'} begrunnelse`}
                             >
                               <div className="flex items-center justify-between">
                                 <span>

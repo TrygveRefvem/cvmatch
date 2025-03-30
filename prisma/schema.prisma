@@ -31,6 +31,17 @@ enum CandidateStatus {
   REJECTED    // Candidate rejected
 }
 
+// Add Enum for Job Application Status (Seeker's perspective)
+enum JobApplicationStatus {
+  NOT_APPLIED       // Job saved/analyzed, but not applied to yet
+  APPLIED           // Application submitted
+  INTERVIEWING      // In interview process
+  OFFER_RECEIVED    // Received a job offer
+  ACCEPTED          // Accepted the job offer
+  REJECTED_BY_COMPANY // Rejected by the company
+  WITHDRAWN         // Seeker withdrew application
+}
+
 
 // --- MODELS --- 
 
@@ -58,6 +69,9 @@ model User {
 
   // Trial Period Fields
   trialEndsAt    DateTime? // Date when the free trial expires
+
+  // Link to Job Seeker Profile (if user is a CANDIDATE)
+  jobSeekerProfile JobSeekerProfile? 
 }
 
 model Account {
@@ -95,6 +109,19 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// Add Model for Job Seeker Profile
+model JobSeekerProfile {
+  id         String    @id @default(cuid())
+  userId     String    @unique // One-to-one relation with User
+  cvText     String?   @db.Text // Primary CV text stored here (Raw or Markdown fallback)
+  structuredCvJson Json?    // NEW: Store the parsed, structured CV data
+  // Add other profile fields later if needed (e.g., skills, preferences)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 // Model for Job Batches created by Recruiters
 model JobBatch {
   id                  String    @id @default(cuid())
@@ -129,8 +156,11 @@ model AnalysisResult {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  // Add the status field
-  status              CandidateStatus @default(NEW)
+  // Recruiter status - now optional
+  status              CandidateStatus? @default(NEW)
+
+  // Add seeker status field
+  seekerStatus        JobApplicationStatus? // Status from the seeker's perspective
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobBatch JobBatch? @relation(fields: [jobBatchId], references: [id], onDelete: Cascade)

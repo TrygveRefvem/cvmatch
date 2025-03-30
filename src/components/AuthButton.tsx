@@ -19,6 +19,17 @@ export default function AuthButton() {
             Dashboard
           </Link>
         )}
+        {/* Candidate Links */} 
+        {session.user?.role === 'CANDIDATE' && (
+          <>
+            <Link href="/my-cv" className="text-sm hover:underline" title="Gå til Min CV">
+              Min CV
+            </Link>
+            <Link href="/my-jobs" className="text-sm hover:underline" title="Gå til Mine Jobber">
+              Mine Jobber
+            </Link>
+          </>
+        )}
         {/* Existing Account Link */} 
         <Link href="/account" className="text-sm hidden sm:inline hover:underline" title="Gå til Min Konto">
           {session.user?.email} 

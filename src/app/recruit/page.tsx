@@ -13,14 +13,14 @@ import { Prisma } from '@prisma/client';
 
 // Helper function to format dates
 const formatDate = (date: Date | string | null): string => {
-  if (!date) return 'N/A';
+  if (!date) return 'I/T';
   // Handle potential string dates from client-side fetch
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   try {
     return format(dateObj, 'PPP', { locale: nb });
   } catch (error) {
     console.error("Error formatting date:", date, error);
-    return 'Invalid Date';
+    return 'Ugyldig dato';
   }
 };
 
@@ -51,7 +51,7 @@ export default function RecruitDashboardPage() {
       setJobBatches(data);
     } catch (error) {
       console.error('Failed to fetch batches:', error);
-      setErrorLoadingData(error instanceof Error ? error.message : 'Unknown error');
+      setErrorLoadingData(error instanceof Error ? error.message : 'Ukjent feil');
     } finally {
       setIsLoadingData(false);
     }
@@ -133,7 +133,7 @@ export default function RecruitDashboardPage() {
     // Display a minimal loading state or null until redirection happens
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p>Loading...</p> { /* Or a proper spinner component */}
+        <p>Laster...</p> { /* Or a proper spinner component */}
       </div>
     );
   }

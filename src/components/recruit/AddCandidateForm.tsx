@@ -110,7 +110,7 @@ export default function AddCandidateForm({ batchId, onSuccess }: AddCandidateFor
             className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 disabled:opacity-50"
           />
         </div>
-        <p className="mt-1 text-xs text-gray-500">Kun .txt støttes fullt ut foreløpig.</p>
+        <p className="mt-1 text-xs text-gray-500">Godtatte filtyper: PDF, DOCX, TXT.</p>
       </div>
 
       {error && (

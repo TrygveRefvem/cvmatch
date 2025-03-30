@@ -46,9 +46,19 @@ ALTER TABLE "User" ALTER COLUMN "updatedAt" SET NOT NULL;
 
 -- AlterTable `User` - Change role from TEXT to Enum preserving data
 -- Note: This assumes existing roles are 'ADMIN', 'CANDIDATE', or 'RECRUITER'. Other values will cause errors.
+
+-- Step 1: Drop the default constraint IF IT EXISTS (unlikely for TEXT, but safe)
+-- It might fail if the default doesn't exist, depending on PG version. 
+-- Consider commenting this out if it causes issues.
+ALTER TABLE "User" ALTER COLUMN "role" DROP DEFAULT;
+
+-- Step 2: Alter the column type using the cast
 ALTER TABLE "User"
-    ALTER COLUMN "role" TYPE "UserRole" USING "role"::"UserRole",
-    ALTER COLUMN "role" SET DEFAULT 'CANDIDATE'; -- Set default after type change
+    ALTER COLUMN "role" TYPE "UserRole" USING "role"::"UserRole";
+
+-- Step 3: Set the new default value *after* the type change
+ALTER TABLE "User"
+    ALTER COLUMN "role" SET DEFAULT 'CANDIDATE';
 
 
 -- Foreign Key adjustments (usually handled by Prisma, but included for completeness if needed)
