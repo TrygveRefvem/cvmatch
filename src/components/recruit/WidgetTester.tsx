@@ -55,6 +55,22 @@ export default function WidgetTester({ batchTitle, widgetToken }: WidgetTesterPr
     if (typeof window !== 'undefined' && widgetToken && !scriptAddedRef.current) {
         console.log("WidgetTester: Attempting to load widget script.");
 
+        // --- Explicitly clear the container BEFORE adding script --- 
+        const container = document.getElementById('cvmatch-apply-widget-container');
+        if (container) {
+            container.innerHTML = ''; // Remove any existing content (like old buttons)
+            // Add back the placeholder if desired
+            const placeholder = document.createElement('p');
+            placeholder.className = 'text-xs text-gray-500 dark:text-gray-500';
+            placeholder.id = 'widget-placeholder';
+            placeholder.textContent = '(Laster CVMatch widget... Hvis knappen ikke vises, sjekk konsollen for feil.)';
+            container.appendChild(placeholder);
+            console.log("WidgetTester: Cleared widget container content.");
+        } else {
+            console.warn("WidgetTester: Could not find container 'cvmatch-apply-widget-container' to clear.");
+        }
+        // --- End container clearing ---
+
         // Set config on window object
         (window as any).cvMatchConfig = {
             token: widgetToken,
@@ -69,7 +85,6 @@ export default function WidgetTester({ batchTitle, widgetToken }: WidgetTesterPr
              return; // Don't add another one
         }
 
-
         const script = document.createElement('script');
         script.src = widgetScriptUrl;
         script.async = true;
@@ -79,17 +94,31 @@ export default function WidgetTester({ batchTitle, widgetToken }: WidgetTesterPr
         document.body.appendChild(script);
         scriptAddedRef.current = true; // Mark script as added
 
-        // Cleanup function to remove the script when the component unmounts
+        // Cleanup function to remove the script, config, and the injected button
         return () => {
-            console.log("WidgetTester: Cleaning up widget script.");
-            // Find the script again might be necessary if the reference is lost
-            existingScript = document.querySelector(`script[src="${widgetScriptUrl}"]`);
-            if (existingScript && document.body.contains(existingScript)) {
-                document.body.removeChild(existingScript);
-                console.log("WidgetTester: Removed widget script from body.");
-            }
-            // Optionally clear the config
+            console.log("WidgetTester: Cleaning up widget script, config, and button.");
+            
+            // Remove ALL script instances matching the src
+            const scripts = document.querySelectorAll(`script[src="${widgetScriptUrl}"]`);
+            scripts.forEach(script => {
+                if (document.body.contains(script)) {
+                    document.body.removeChild(script);
+                    console.log(`WidgetTester: Removed script instance with src ${widgetScriptUrl}`);
+                }
+            });
+
+            // Clear the config
             delete (window as any).cvMatchConfig;
+
+            // Explicitly remove the button from the container
+            const container = document.getElementById('cvmatch-apply-widget-container');
+            // Use a more specific selector if possible, or ensure apply.js adds a unique class/ID
+            const button = container?.querySelector('button.cvmatch-apply-button'); 
+            if (button && container?.contains(button)) {
+                container.removeChild(button);
+                console.log("WidgetTester: Removed existing apply button from container.");
+            }
+
             scriptAddedRef.current = false; // Reset ref on unmount
         };
     }

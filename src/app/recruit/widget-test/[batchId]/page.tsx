@@ -19,33 +19,22 @@ export default async function WidgetTestPage({ params }: { params: { batchId: st
 
   let batchId: string;
   try {
-    // --- Workaround for receiving Promise as params --- 
-    const potentialBatchId = (params as any)?.batchId;
-    if (typeof potentialBatchId !== 'string' || potentialBatchId.length === 0) {
-        console.error("WidgetTestPage: Failed to extract string batchId from params:", params);
-        return (
-             <div className="container mx-auto p-6 text-center">
-                 <h1 className="text-xl font-semibold text-red-600">Invalid Page URL</h1>
-                 <p className="mt-2 text-gray-700">Could not read the batch ID from the URL parameters.</p>
-             </div>
-         );
-    }
-    batchId = potentialBatchId;
-    console.log("DEBUG: WidgetTestPage successfully extracted batchId:", batchId);
-    // --- End Workaround ---
+    // Properly await params before accessing properties
+    const resolvedParams = params instanceof Promise ? await params : params;
+    batchId = resolvedParams.batchId;
 
-    // --- Zod Validation Removed ---
-    // const validatedParams = ParamsSchema.safeParse(params);
-    // if (!validatedParams.success) {
-    //   console.error("WidgetTestPage: Invalid batch ID format received:", params);
-    //   return (
-    //       <div className="container mx-auto p-6 text-center">
-    //           <h1 className="text-xl font-semibold text-red-600">Invalid Page URL</h1>
-    //           <p className="mt-2 text-gray-700">The batch ID in the URL is not valid.</p>
-    //       </div>
-    //   );
-    // }
-    // const { batchId } = validatedParams.data; // Use validated batchId
+    if (typeof batchId !== 'string' || batchId.length === 0) {
+      console.error("WidgetTestPage: Failed to extract string batchId from params:", resolvedParams);
+      return (
+           <div className="container mx-auto p-6 text-center">
+               <h1 className="text-xl font-semibold text-red-600">Invalid Page URL</h1>
+               <p className="mt-2 text-gray-700">Could not read the batch ID from the URL parameters.</p>
+           </div>
+       );
+    }
+    console.log("DEBUG: WidgetTestPage successfully extracted batchId:", batchId);
+
+    // --- Zod Validation Removed (remains removed) ---
 
     // --- Continue with the rest of the component logic --- 
 
@@ -105,7 +94,13 @@ export default async function WidgetTestPage({ params }: { params: { batchId: st
 
   } catch (error) {
      // Catch potential errors during DB fetch or other async operations
-     const logBatchId = (params as any)?.batchId || 'unknown'; 
+     let logBatchId = 'unknown';
+     try {
+       const resolvedParams = params instanceof Promise ? await params : params;
+       logBatchId = resolvedParams.batchId || 'unknown';
+     } catch (paramsError) {
+       console.error('WidgetTestPage: Error accessing batch ID for logging:', paramsError);
+     }
      console.error(`Error in WidgetTestPage for batch ID ${logBatchId}:`, error);
       return (
          <div className="container mx-auto p-6 text-center">
@@ -116,15 +111,23 @@ export default async function WidgetTestPage({ params }: { params: { batchId: st
   }
 }
 
-// Metadata function might also need the workaround if it relies on params directly
+// Metadata function needs the same fix
 export async function generateMetadata({ params }: { params: { batchId: string } }) {
-  // Apply workaround here too
-  const potentialBatchId = (params as any)?.batchId;
-  if (typeof potentialBatchId !== 'string' || potentialBatchId.length === 0) {
-      return { title: 'Invalid Batch - Widget Test' };
+  let batchId = 'Invalid Batch';
+  try {
+    // Properly await params before accessing properties
+    const resolvedParams = params instanceof Promise ? await params : params;
+    const potentialBatchId = resolvedParams.batchId;
+
+    if (typeof potentialBatchId === 'string' && potentialBatchId.length > 0) {
+        batchId = potentialBatchId;
+    } else {
+        console.error("generateMetadata: Failed to extract valid string batchId from params:", resolvedParams);
+    }
+  } catch (error) {
+      console.error("generateMetadata: Error resolving params:", error);
   }
-  const batchId = potentialBatchId;
-  
+
   // Fetch title securely if needed, otherwise use ID
   // Example: const batch = await prisma.jobBatch.findUnique({ where: {id: batchId}, select: {title: true}}); const title = batch?.title || batchId;
   return {

@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, PlusIcon, XMarkIcon, PlusCircleIcon, EyeIcon, TrashIcon, BuildingOffice2Icon } from "@heroicons/react/24/outline";
 import { JobBatch } from "@prisma/client";
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
 import { CreateBatchForm } from '@/components/recruit/CreateBatchForm';
+import { Prisma } from '@prisma/client';
 
 // Helper function to format dates
 const formatDate = (date: Date | string | null): string => {
@@ -23,10 +24,10 @@ const formatDate = (date: Date | string | null): string => {
   }
 };
 
-// Explicit type for the fetched data structure
-type BatchWithCount = Pick<JobBatch, 'id' | 'title' | 'createdAt'> & {
-  _count: { analysisResults: number }
-};
+// Use Prisma helper type for better type safety
+type BatchWithCount = Prisma.JobBatchGetPayload<{
+  include: { _count: { select: { analysisResults: true } } }
+}>;
 
 export default function RecruitDashboardPage() {
   const { data: session, status: sessionStatus } = useSession();
@@ -46,7 +47,7 @@ export default function RecruitDashboardPage() {
         const errorData = await response.json().catch(() => ({})); 
         throw new Error(errorData.error || 'Kunne ikke hente batches');
       }
-      const data = await response.json();
+      const data: BatchWithCount[] = await response.json();
       setJobBatches(data);
     } catch (error) {
       console.error('Failed to fetch batches:', error);
@@ -58,13 +59,45 @@ export default function RecruitDashboardPage() {
 
   // Handler for when a new batch is created via the form
   const handleBatchCreated = (newBatch: JobBatch) => {
-    // Instead of manually updating state, refetch the entire list
-    console.log(`Batch ${newBatch.id} created, refetching list...`);
-    fetchJobBatches(); // Call fetchJobBatches to get the updated list
-
-    // Close the modal
+    console.log(`Batch ${newBatch.id} created, adding to list...`);
+    const newBatchWithCount: BatchWithCount = {
+      ...newBatch,
+      _count: { analysisResults: 0 } // Initialize count
+    };
+    // Add to the top of the list
+    setJobBatches(prevBatches => [newBatchWithCount, ...prevBatches]);
     setIsCreateModalOpen(false);
   };
+
+  // --- Add Delete Handler --- 
+  const handleDeleteBatch = async (batchId: string, batchTitle: string) => {
+    if (window.confirm(`Er du sikker på at du vil slette batchen "${batchTitle}" og alle tilhørende kandidatanalyser? Handlingen kan ikke angres.`)) {
+      setIsLoadingData(true); // Indicate loading during delete
+       try {
+         const response = await fetch(`/api/recruit/batches/${batchId}`, {
+           method: 'DELETE',
+         });
+
+         if (!response.ok) {
+           const errorData = await response.json().catch(() => ({}));
+           throw new Error(errorData.error || `Kunne ikke slette batch: ${response.statusText}`);
+         }
+
+         // Remove the batch from the state on successful deletion
+         setJobBatches(prevBatches => prevBatches.filter(batch => batch.id !== batchId));
+         console.log(`Batch ${batchId} deleted successfully.`);
+         // Consider using a toast notification library instead of alert for better UX
+         // alert('Batch slettet!'); 
+
+       } catch (err: any) {
+         console.error("Delete batch error:", err);
+         alert(`Feil ved sletting av batch: ${err.message}`); // Keep alert for errors for now
+       } finally {
+          setIsLoadingData(false); // Stop loading indicator
+       }
+    }
+  };
+  // --- End Delete Handler --- 
 
   const handleOpenModal = () => {
     setIsCreateModalOpen(true);
@@ -152,9 +185,7 @@ export default function RecruitDashboardPage() {
                         <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tittel</th>
                         <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Kandidater</th>
                         <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Opprettet</th>
-                        <th scope="col" className="relative px-4 sm:px-6 py-3">
-                          <span className="sr-only">Handlinger</span>
-                        </th>
+                        <th scope="col" className="relative px-4 sm:px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Handlinger</th>
                       </tr>
                     </thead>
                     <tbody className="bg-card divide-y divide-border">
@@ -169,10 +200,23 @@ export default function RecruitDashboardPage() {
                           <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-muted-foreground">{formatDate(batch.createdAt)}</div>
                           </td>
-                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <Link href={`/recruit/batches/${batch.id}`} className="text-primary hover:underline">
-                              Vis detaljer
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                            <Link href={`/recruit/batches/${batch.id}`} className="text-primary hover:underline inline-flex items-center px-2 py-1 rounded hover:bg-muted"
+                                  title="Vis detaljer"
+                            >
+                              <EyeIcon className="h-4 w-4 mr-1"/> Vis
                             </Link>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent triggering other row/link actions
+                                handleDeleteBatch(batch.id, batch.title); // Pass title for confirmation dialog
+                              }}
+                              className="text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 inline-flex items-center px-2 py-1 rounded hover:bg-destructive/10"
+                              title="Slett batch"
+                              aria-label={`Slett batch ${batch.title}`}
+                            >
+                              <TrashIcon className="h-4 w-4 mr-1" /> Slett
+                            </button>
                           </td>
                         </tr>
                       ))}

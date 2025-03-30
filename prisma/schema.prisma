@@ -13,6 +13,53 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- ENUMS --- 
+
+enum UserRole {
+  ADMIN
+  CANDIDATE
+  RECRUITER
+}
+
+// Add Enum for Candidate Status in a Batch
+enum CandidateStatus {
+  NEW         // Default status for new candidates
+  ROUND_2     // Advanced to second round
+  ROUND_3     // Advanced to third round
+  FINALIST    // Considered for final decision
+  HIRED       // Candidate hired for the position
+  REJECTED    // Candidate rejected
+}
+
+
+// --- MODELS --- 
+
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  emailVerified  DateTime?
+  image          String?
+  hashedPassword String?   // Added for storing hashed passwords
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
+
+  role           UserRole @default(CANDIDATE) // Default role
+
+  accounts       Account[]
+  sessions       Session[]
+  jobBatches     JobBatch[] // Recruiter can have multiple batches
+  analysisResults AnalysisResult[] // Candidate can have multiple analysis results
+
+  stripeCustomerId         String?   @unique // Stores the Stripe Customer ID
+  stripeSubscriptionId     String?   @unique // Stores the active Stripe Subscription ID
+  stripePriceId            String?   // Stores the price ID of the current plan
+  stripeCurrentPeriodEnd   DateTime? // Stores the end date of the current Stripe subscription period
+
+  // Trial Period Fields
+  trialEndsAt    DateTime? // Date when the free trial expires
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -40,33 +87,6 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model User {
-  id             String    @id @default(cuid())
-  name           String?
-  email          String?   @unique
-  emailVerified  DateTime?
-  image          String?
-  hashedPassword String?   // Added for storing hashed passwords
-  accounts       Account[]
-  sessions       Session[]
-
-  // Role
-  role          String    @default("CANDIDATE") // Default role is CANDIDATE
-  // Possible values: CANDIDATE, RECRUITER
-  
-  // Trial Period Fields
-  trialEndsAt    DateTime? // Date when the free trial expires
-
-  // Stripe Billing Fields
-  stripeCustomerId         String?   @unique // Stores the Stripe Customer ID
-  stripeSubscriptionId     String?   @unique // Stores the active Stripe Subscription ID
-  stripePriceId            String?   // Stores the price ID of the current plan
-  stripeSubscriptionStatus String?   // e.g., 'active', 'canceled', 'past_due'
-
-  analysisResults AnalysisResult[]
-  jobBatches             JobBatch[]       // Relation to JobBatches created by this user
-}
-
 model VerificationToken {
   identifier String
   token      String   @unique
@@ -75,50 +95,43 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model AnalysisResult {
-  id                String    @id @default(cuid())
-  userId            String    // Foreign key linking to the User model
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  jobTitle          String?   // Title of the job description used
-  jobDescriptionUrl String?   // URL of the job description
-  cvText            String?   // The raw text of the CV (Made optional)
-  jobDescriptionText String?  // The raw text of the job description (Made optional)
-  resultJson        Json      // The JSON result from OpenAI analysis
-  matchPercentage   Int?      // Store the calculated match percentage
-  feedback          String?   // Store general feedback
-  strengths         String?   // Store identified strengths
-  areasForImprovement String? // Store areas for improvement
-  questionsToAsk    String?   // Store suggested questions
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+// Model for Job Batches created by Recruiters
+model JobBatch {
+  id                  String    @id @default(cuid())
+  title               String    // Name of the batch (e.g., "Senior Software Engineer Q3")
+  description         String?   // Optional details about the batch/job
+  jobDescriptionUrl   String?   // URL of the original job description
+  jobDescriptionText  String?   @db.Text // Extracted text from URL or direct input
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  userId              String    // Foreign key to User (Recruiter)
+  widgetToken         String?   @unique // Unique token for the application widget
 
-  // Relation to JobBatch (optional)
-  jobBatchId        String?   // Foreign key linking to a JobBatch (if part of one)
-  jobBatch          JobBatch? @relation(fields: [jobBatchId], references: [id], onDelete: SetNull) // If batch deleted, nullify link
-
-  // Field to track when rejection feedback was sent
-  rejectionSentAt   DateTime?
-
-  @@index([userId, createdAt]) // Index for efficient fetching for a user
+  user            User     @relation(fields: [userId], references: [id])
+  analysisResults AnalysisResult[] // Batch can have multiple analysis results
 }
 
-// New model for Job Batches managed by Recruiters
-model JobBatch {
-  id              String    @id @default(cuid())
-  title           String    // Name of the batch (e.g., "Senior Software Engineer Q3")
-  description     String?   // Optional details about the batch/job
-  
-  // Job Description details associated with this batch
-  jobDescriptionUrl String    // URL of the canonical job description for this batch
-  jobDescriptionText String?  // Fetched and stored text from the URL
+// Model for storing CV analysis results
+model AnalysisResult {
+  id                  String    @id @default(cuid())
+  userId              String    // Foreign key to User (Candidate)
+  jobBatchId          String?   
+  jobTitle            String?   // Title of the job analyzed against
+  jobDescriptionUrl   String?   // URL of the job description used
+  cvText              String?   @db.Text // Raw text extracted from CV
+  jobDescriptionText  String?   @db.Text // Raw text extracted from Job Description
+  resultJson          Json?     // Detailed structured analysis result from LLM
+  matchPercentage     Int?      // Overall match percentage (0-100)
+  feedback            Json?     // Feedback for the candidate (potentially structured)
+  strengths           Json?     // Candidate strengths (potentially structured/array)
+  areasForImprovement Json?     // Areas for improvement (potentially structured/array)
+  rejectionSentAt     DateTime? // Timestamp when rejection feedback was sent
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  widgetToken     String   @unique @default(cuid()) // Added field for external widget identification
+  // Add the status field
+  status              CandidateStatus @default(NEW)
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  userId          String    // Foreign key linking to the User (Recruiter)
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade) // If recruiter deleted, delete batches
-  analysisResults AnalysisResult[] // Candidates (AnalysisResults) associated with this batch
-
-  @@index([userId])
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobBatch JobBatch? @relation(fields: [jobBatchId], references: [id], onDelete: Cascade)
 }

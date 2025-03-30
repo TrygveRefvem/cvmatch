@@ -244,15 +244,23 @@
           throw new Error(result.error || `En feil oppstod (${response.status})`);
         }
   
-        // Success
-        showMessage(result.message || "Søknad mottatt!", "success");
-        form.reset(); // Clear the form
+        // Success - Hide form and show thank you message
+        form.style.display = 'none'; // Hide the form
+        // Optional: Hide title too if desired
+        // const modalTitle = modalContent.querySelector('h2');
+        // if (modalTitle) modalTitle.style.display = 'none';
+        showMessage(result.message || "Takk for din søknad! Vi har mottatt den.", "success");
+        // Don't reset the form here, as it's hidden
+        // form.reset(); 
+  
+        // Keep the modal open with the success message
         // Optionally close modal after a delay
-        // setTimeout(closeModal, 3000);
+        // setTimeout(closeModal, 5000); // e.g., close after 5 seconds
   
       } catch (error) {
         console.error("CVMatch Widget Submit Error:", error);
         showMessage(error.message || "Kunne ikke sende søknad. Prøv igjen.", "error");
+        // Keep form visible on error
       } finally {
         setLoading(false);
       }
@@ -262,7 +270,9 @@
     function closeModal() {
       modalBackdrop.classList.remove("cvmatch-visible");
       clearMessage(); // Clear messages when closing
-      // form.reset(); // Optional: reset form on close
+      form.style.display = 'block'; // *** Ensure form is visible when reopening ***
+      // Optional: reset form on close
+      // form.reset(); 
     }
   
     function setLoading(isLoading) {
@@ -301,9 +311,13 @@
           // Clear placeholder if it exists
           const placeholder = document.getElementById('widget-placeholder');
           if (placeholder) placeholder.style.display = 'none';
-          // Add button if not already added
-          if (!document.getElementById('cvmatch-apply-btn')) {
+          
+          // --- Strengthened Check: Only add button if container doesn't already have one --- 
+          if (!currentContainer.querySelector('.cvmatch-apply-button')) {
+              console.log("CVMatch Widget: Adding apply button.");
               currentContainer.appendChild(applyButton);
+          } else {
+              console.log("CVMatch Widget: Apply button already exists in container, not adding again.");
           }
      }
   

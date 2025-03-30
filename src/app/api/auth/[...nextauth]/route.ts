@@ -37,7 +37,8 @@ export const authOptions: AuthOptions = {
         // If user not found or password not set, deny
         if (!userFromDb || !userFromDb.hashedPassword) {
           console.log(`Authorize failed: User not found or no password for ${credentials.email}`);
-          return null;
+          // Important: If user doesn't exist after db reset, authorize fails here
+          return null; 
         }
 
         // Verify password
@@ -52,17 +53,17 @@ export const authOptions: AuthOptions = {
         }
 
         console.log(`User authorized successfully: ${userFromDb.email}`);
-        // Explicitly construct the return object matching the augmented User type
-        const authorizedUser: User = {
-          id: userFromDb.id,
-          email: userFromDb.email,
-          name: userFromDb.name,
-          image: userFromDb.image,
-          // Cast userFromDb to access the role, assuming migration was successful
-          role: (userFromDb as any).role, 
-          // emailVerified property removed as it's not in the augmented User type
+        
+        // Return the user object directly from the database finding
+        // This ensures the structure matches what's needed for the JWT callback
+        // And implicitly confirms the user exists in the DB at this point.
+        return {
+            id: userFromDb.id,
+            email: userFromDb.email,
+            name: userFromDb.name,
+            image: userFromDb.image,
+            role: userFromDb.role, // Access role directly
         };
-        return authorizedUser;
       }
     })
     // Add other providers like Google, GitHub etc. here later if needed
@@ -71,13 +72,11 @@ export const authOptions: AuthOptions = {
     strategy: "jwt", // Using JWT for session strategy
   },
   callbacks: {
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user }) { // Simplified params if account/profile not needed
       // Persist the user id and role to the token right after signin
       if (user) {
         token.id = user.id;
-        // The 'user' object passed here comes from the 'authorize' function or OAuth profile
-        // Ensure the 'role' property exists on the user object being passed
-        token.role = (user as any).role || 'CANDIDATE'; // Add user role to the token, default if missing
+        token.role = (user as any).role || 'CANDIDATE'; // Add user role to the token
       }
       return token;
     },
